@@ -61,14 +61,14 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
         <div className="mx-auto max-w-5xl px-4 py-5">
           <h1 className="text-xl font-semibold tracking-tight">Drive Text Extractor</h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Extract the text of the PDFs and images in a public Google Drive folder. Native PDFs go
-            through a PDF parser, images and scanned pages through OCR.
+            Extract the text of the PDFs and images shared on Google Drive, from a whole folder or a
+            single file. Native PDFs go through a PDF parser, images and scanned pages through OCR.
           </p>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-        <Section step="01" title="Paste a folder link">
+        <Section step="01" title="Paste a Drive link">
           <fieldset disabled={busy}>
             <LinkForm
               busy={listing.status === 'loading'}
