@@ -33,6 +33,13 @@ _CONFIG_MESSAGES = {
     "SERVICE_DISABLED": "The Google Drive API is not enabled for this API key's project.",
     "accessNotConfigured": "The Google Drive API is not enabled for this API key's project.",
     "API_KEY_SERVICE_BLOCKED": "This API key is not allowed to call the Google Drive API.",
+    # Google refuses the key itself, whatever the file: the same answer comes back for files
+    # known to be public, so this is a key or project problem, not a sharing one.
+    "ACCESS_DENIED": (
+        "Google refused this API key. In the Google Cloud console, check that the Drive API is "
+        "enabled in the key's project, that the key's API restrictions allow it, and that it "
+        "has no website or IP restriction. A new key can take a few minutes to start working."
+    ),
 }
 
 Json = dict[str, Any]
