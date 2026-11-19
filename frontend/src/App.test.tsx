@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -99,8 +99,13 @@ describe('App batch', () => {
 
     expect(await screen.findByText(/Finished: 2 files/)).toBeInTheDocument()
     expect(screen.getByText('1 failed', { exact: false })).toBeInTheDocument()
-    expect(screen.getByText('done')).toBeInTheDocument()
-    expect(screen.getByText('failed')).toBeInTheDocument()
+    const table = within(screen.getByRole('table'))
+    expect(table.getByText('done')).toBeInTheDocument()
+    expect(table.getByText('failed')).toBeInTheDocument()
+    const results = within(screen.getByRole('region', { name: /Read the results/ }))
+    expect(results.getByText('Invoice text')).toBeInTheDocument()
+    expect(results.getByText(/This file is damaged/)).toBeInTheDocument()
+    expect(results.getByRole('link', { name: 'Export JSON' })).toBeInTheDocument()
     const startCall = fetchMock.mock.calls.find(([url]) => url === '/api/jobs')
     expect(JSON.parse(startCall?.[1]?.body as string)).toEqual({
       link: LINK,

@@ -14,6 +14,7 @@ import { LinkForm } from './features/folder/LinkForm'
 import { SkippedFiles } from './features/folder/SkippedFiles'
 import { selectedInOrder, toggle, toggleAll } from './features/folder/selection'
 import { useFolderListing } from './features/folder/useFolderListing'
+import { ResultList } from './features/results/ResultList'
 import { plural } from './lib/format'
 
 interface AppProps {
@@ -148,6 +149,12 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                   )}
                   {job && <BatchProgress job={job} onCancel={() => void batch.cancel()} />}
                 </div>
+              </Section>
+            )}
+
+            {job && (
+              <Section step="04" title="Read the results">
+                <ResultList job={job} onSelectFailed={(ids) => setSelected(new Set(ids))} />
               </Section>
             )}
           </>
