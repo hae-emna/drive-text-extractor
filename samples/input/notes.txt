@@ -1,1 +1,1 @@
-Plain text files are listed as skipped: only PDF, PNG and JPEG are processed.
+Text files are listed as skipped: only PDF, PNG and JPEG are processed.
