@@ -13,17 +13,19 @@ from drive_text_extractor.domain.jobs import FileStatus, FileTask, Job
 from drive_text_extractor.domain.models import (
     ExtractionMethod,
     FolderListing,
+    LinkKind,
     PageText,
     SkippedFile,
     SourceFile,
 )
 
-EXPORT_SCHEMA_VERSION = "1.0"
+EXPORT_SCHEMA_VERSION = "1.1"
+"""1.1 added ``source.kind``; additive changes bump the minor version."""
 
 # --- Requests ------------------------------------------------------------------------------
 
 
-class ListFolderRequest(BaseModel):
+class ListFilesRequest(BaseModel):
     link: str = Field(min_length=1, max_length=2048)
     recursive: bool = False
 
@@ -68,7 +70,9 @@ class FolderOut(BaseModel):
 
 
 class FolderListingOut(BaseModel):
+    kind: LinkKind
     folder: FolderOut
+    """The folder, or the file itself when the link points to a single file."""
     files: list[FileOut]
     skipped: list[SkippedFileOut]
     truncated: bool
@@ -117,6 +121,7 @@ class JobOut(BaseModel):
 
 class SourceOut(BaseModel):
     type: Literal["google_drive", "local"]
+    kind: LinkKind
     link: str
     folder: FolderOut
 
@@ -167,6 +172,7 @@ def skipped_out(skipped: SkippedFile) -> SkippedFileOut:
 
 def listing_out(listing: FolderListing) -> FolderListingOut:
     return FolderListingOut(
+        kind=listing.kind,
         folder=FolderOut(id=listing.folder_id, name=listing.folder_name),
         files=[file_out(file) for file in listing.files],
         skipped=[skipped_out(skipped) for skipped in listing.skipped],
@@ -235,6 +241,7 @@ def export_out(
         languages=list(job.options.languages),
         source=SourceOut(
             type=source_type,
+            kind=job.link_kind,
             link=job.link,
             folder=FolderOut(id=job.folder_id, name=job.folder_name),
         ),

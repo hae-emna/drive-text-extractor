@@ -83,6 +83,7 @@ def test_export_is_versioned_and_describes_its_source() -> None:
     assert data["schema_version"] == EXPORT_SCHEMA_VERSION
     assert data["source"] == {
         "type": "google_drive",
+        "kind": "folder",
         "link": "https://drive.google.com/drive/folders/abc",
         "folder": {"id": "abc", "name": "Invoices"},
     }

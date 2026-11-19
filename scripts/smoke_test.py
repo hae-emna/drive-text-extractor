@@ -49,7 +49,7 @@ def main(base: str) -> None:
         "missing OCR packs"
     )
 
-    listing = call(base, "/api/folders/list", {"link": "local:"})
+    listing = call(base, "/api/files/list", {"link": "local:"})
     file_ids = [file["id"] for file in listing["files"]]
     print(
         f"listed {len(file_ids)} files, skipped {[s['name'] for s in listing['skipped']]}"
@@ -72,7 +72,7 @@ def main(base: str) -> None:
     assert {k: summary[k] for k in EXPECTED} == EXPECTED, summary
 
     export = call(base, f"/api/jobs/{job['id']}/export")
-    assert export["schema_version"] == "1.0"
+    assert export["schema_version"] == "1.1"
     assert b'<div id="root">' in call(base, "/"), "web page not served"
     print("smoke test passed")
 

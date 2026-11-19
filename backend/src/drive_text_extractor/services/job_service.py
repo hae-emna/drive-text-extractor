@@ -76,6 +76,7 @@ class JobService:
             options=options,
             tasks=[FileTask(available[file_id]) for file_id in wanted],
             created_at=self._now(),
+            link_kind=listing.kind,
         )
         self._store.add(job)
         self._run_in_background(job)

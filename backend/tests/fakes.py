@@ -7,7 +7,13 @@ from typing import ClassVar
 
 from PIL.Image import Image
 
-from drive_text_extractor.domain.models import FolderListing, OcrOutput, SkippedFile, SourceFile
+from drive_text_extractor.domain.models import (
+    FolderListing,
+    LinkKind,
+    OcrOutput,
+    SkippedFile,
+    SourceFile,
+)
 
 
 @dataclass
@@ -40,6 +46,7 @@ class FakeFileSource:
     files: list[SourceFile] = field(default_factory=list)
     skipped: list[SkippedFile] = field(default_factory=list)
     truncated: bool = False
+    kind: LinkKind = LinkKind.FOLDER
     contents: dict[str, bytes | Exception] = field(default_factory=dict)
     download_delay: float = 0.0
     list_error: Exception | None = None
@@ -59,6 +66,7 @@ class FakeFileSource:
             files=tuple(self.files),
             skipped=tuple(self.skipped),
             truncated=self.truncated,
+            kind=self.kind,
         )
 
     async def download(self, file: SourceFile) -> bytes:
