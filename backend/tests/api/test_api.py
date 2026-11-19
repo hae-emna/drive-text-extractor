@@ -2,6 +2,7 @@
 
 import time
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -223,3 +224,24 @@ def test_without_api_key_the_real_drive_source_explains_the_setup() -> None:
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "source_not_configured"
+
+
+def test_demo_mode_runs_the_whole_flow_on_a_local_folder(tmp_path: Path) -> None:
+    (tmp_path / "invoice.pdf").write_bytes(make_pdf(["Local invoice 7 from the demo folder"]))
+    (tmp_path / "readme.txt").write_text("not extracted")
+    app = create_app(
+        settings(file_source="local", local_folder=tmp_path),
+        ocr_engine=FakeOcrEngine(),
+        installed_languages=("eng",),
+    )
+
+    with TestClient(app) as client:
+        assert client.get("/api/health").json()["source"] == "local"
+        listing = client.post("/api/folders/list", json={"link": "local:"}).json()
+        assert [f["name"] for f in listing["files"]] == ["invoice.pdf"]
+        assert [s["name"] for s in listing["skipped"]] == ["readme.txt"]
+
+        body = {"link": "local:", "file_ids": ["invoice.pdf"], "languages": ["eng"]}
+        job = wait_until_finished(client, client.post("/api/jobs", json=body).json()["id"])
+
+    assert job["files"][0]["text"] == "Local invoice 7 from the demo folder"

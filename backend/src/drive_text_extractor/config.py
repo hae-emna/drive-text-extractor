@@ -19,8 +19,14 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    file_source: Literal["google_drive", "local"] = "google_drive"
+    """Where folders are read from. 'local' is a demo mode that needs no API key."""
+
     google_api_key: SecretStr | None = None
     """Google Cloud API key with the Drive API enabled. Only needed for the Drive source."""
+
+    local_folder: Path = Path("../samples/input")
+    """Root folder of the 'local' source. Links then look like 'local:' or 'local:subfolder'."""
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 

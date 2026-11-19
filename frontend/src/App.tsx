@@ -68,7 +68,11 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-8">
         <Section step="01" title="Paste a folder link">
           <fieldset disabled={busy}>
-            <LinkForm busy={listing.status === 'loading'} onSubmit={handleList} />
+            <LinkForm
+              busy={listing.status === 'loading'}
+              demoMode={health?.source === 'local'}
+              onSubmit={handleList}
+            />
           </fieldset>
         </Section>
 

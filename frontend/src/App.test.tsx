@@ -142,3 +142,17 @@ describe('App batch', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('no longer in this folder')
   })
 })
+
+describe('App demo mode', () => {
+  it('explains the local: link syntax when the server reads local folders', async () => {
+    const health = { ...HEALTH, source: 'local' as const }
+    vi.stubGlobal('fetch', vi.fn(fakeBackend({ 'GET /api/health': { body: health } })))
+    render(<App />)
+
+    expect(await screen.findByText(/Demo mode: the server reads its sample folder/)).toBeVisible()
+    expect(screen.getByLabelText('Public Google Drive folder link')).toHaveAttribute(
+      'placeholder',
+      'local:',
+    )
+  })
+})
