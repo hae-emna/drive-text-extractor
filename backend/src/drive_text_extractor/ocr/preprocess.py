@@ -6,8 +6,12 @@ phone photos stored sideways, transparent PNGs that turn black, low contrast, sm
 
 from PIL import Image, ImageOps
 
-TARGET_LONG_SIDE = 2000
-"""Tesseract is most accurate around 300 DPI; small images are scaled up towards this size."""
+UPSCALE_BELOW = 1000
+"""Images whose long side is shorter than this (screenshots, thumbnails) are scaled up."""
+
+TARGET_LONG_SIDE = 1600
+"""Roughly a page at 200 DPI. Larger images are already at scan resolution and left alone:
+enlarging them costs time and can move text out of the size range Tesseract reads best."""
 
 MAX_UPSCALE = 3.0
 
@@ -32,7 +36,7 @@ def _flatten_transparency(image: Image.Image) -> Image.Image:
 
 def _upscale_small(image: Image.Image) -> Image.Image:
     long_side = max(image.size)
-    if long_side >= TARGET_LONG_SIDE:
+    if long_side >= UPSCALE_BELOW:
         return image
     factor = min(TARGET_LONG_SIDE / long_side, MAX_UPSCALE)
     size = (round(image.width * factor), round(image.height * factor))
