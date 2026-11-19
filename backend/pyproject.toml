@@ -9,6 +9,7 @@ dependencies = [
     "fastapi>=0.165.0",
     "httpx>=0.28.1",
     "pydantic-settings>=2.16.3",
+    "pypdfium2>=5.15.2",
     "uvicorn>=0.54.0",
 ]
 
@@ -53,3 +54,8 @@ addopts = "-ra --strict-markers"
 markers = [
     "ocr: needs the Tesseract binary and language packs installed",
 ]
+
+[[tool.mypy.overrides]]
+# pypdfium2 ships no type information.
+module = ["pypdfium2", "pypdfium2.*"]
+ignore_missing_imports = true
