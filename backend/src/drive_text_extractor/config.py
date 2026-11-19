@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     ocr_auto_rotate: bool = True
     """Detect and fix sideways or upside-down scans before OCR (costs one extra Tesseract pass)."""
 
+    image_ocr_engine: Literal["rapidocr", "tesseract"] = "rapidocr"
+    """Engine for PNG and JPEG files. RapidOCR finds text anywhere in photos and screenshots and
+    reads English and French; images in other languages, and scanned PDF pages, use Tesseract."""
+
+    ocr_models_dir: Path | None = None
+    """Where RapidOCR keeps its models. Unset: inside the installed package, fetched on first use.
+    The Docker image sets it to a folder filled at build time."""
+
     @property
     def max_file_bytes(self) -> int:
         return self.max_file_size_mb * 1_000_000

@@ -45,8 +45,16 @@ jobs:
       - name: Type-check
         run: uv run mypy
 
+      - name: Cache the RapidOCR models
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/ocr-models
+          key: ocr-models-${{ hashFiles('backend/src/drive_text_extractor/ocr/rapid_models.py') }}
+
       - name: Test
         run: uv run pytest
+        env:
+          OCR_MODELS_DIR: ${{ runner.temp }}/ocr-models
 
   frontend:
     name: Frontend · lint, types, tests, build

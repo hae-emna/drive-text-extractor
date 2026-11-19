@@ -21,6 +21,8 @@ from drive_text_extractor.drive.client import GoogleDriveSource
 from drive_text_extractor.extractors.image import ImageExtractor
 from drive_text_extractor.extractors.pdf import PdfExtractor
 from drive_text_extractor.local.source import LocalFolderSource
+from drive_text_extractor.ocr.rapid import RapidOcrEngine
+from drive_text_extractor.ocr.routing import PreferredOcrEngine
 from drive_text_extractor.ocr.tesseract import TesseractEngine
 from drive_text_extractor.services.batch_runner import BatchRunner
 from drive_text_extractor.services.folder_browser import FolderBrowser
@@ -40,7 +42,10 @@ def create_app(
     ocr_engine: OcrEngine | None = None,
     installed_languages: Sequence[str] | None = None,
 ) -> FastAPI:
-    """Build the application. Tests pass fakes for the source and the OCR engine."""
+    """Build the application. Tests pass fakes for the source and the OCR engine.
+
+    ``ocr_engine`` replaces both OCR engines: the one for images and the one for scanned PDF pages.
+    """
     settings = settings or Settings()
     _configure_logging(settings)
 
@@ -48,18 +53,27 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as http:
             source, source_type = _file_source(settings, http, file_source)
-            ocr = ocr_engine or TesseractEngine(
+            tesseract = TesseractEngine(
                 timeout_seconds=settings.ocr_timeout_seconds,
                 auto_rotate=settings.ocr_auto_rotate,
             )
+            page_ocr = ocr_engine or tesseract
+            image_ocr = ocr_engine or _image_ocr(settings, tesseract)
             languages = (
                 tuple(installed_languages)
                 if installed_languages is not None
                 else tuple(TesseractEngine.available_languages())
             )
-            container = build_container(settings, source, source_type, ocr, languages)
+            container = build_container(
+                settings, source, source_type, languages, page_ocr=page_ocr, image_ocr=image_ocr
+            )
             app.state.container = container
-            logger.info("Started: source=%s, OCR languages=%s", source_type, languages)
+            logger.info(
+                "Started: source=%s, image OCR=%s, OCR languages=%s",
+                source_type,
+                settings.image_ocr_engine,
+                languages,
+            )
             yield
             await container.jobs.shutdown()
 
@@ -81,19 +95,21 @@ def build_container(
     settings: Settings,
     source: FileSource,
     source_type: SourceType,
-    ocr: OcrEngine,
     installed_languages: tuple[str, ...],
+    *,
+    page_ocr: OcrEngine,
+    image_ocr: OcrEngine,
 ) -> Container:
     router = ExtractorRouter(
         [
             PdfExtractor(
-                ocr=ocr,
+                ocr=page_ocr,
                 max_pages=settings.max_pdf_pages,
                 min_text_chars=settings.pdf_ocr_min_chars,
                 render_dpi=settings.pdf_render_dpi,
                 max_render_pixels=settings.max_image_megapixels * 1_000_000,
             ),
-            ImageExtractor(ocr, max_pixels=settings.max_image_megapixels * 1_000_000),
+            ImageExtractor(image_ocr, max_pixels=settings.max_image_megapixels * 1_000_000),
         ]
     )
     browser = FolderBrowser(source, router)
@@ -106,6 +122,20 @@ def build_container(
         source_type=source_type,
         installed_languages=installed_languages,
     )
+
+
+def _image_ocr(settings: Settings, tesseract: TesseractEngine) -> OcrEngine:
+    """RapidOCR for photos and screenshots in the languages it reads, Tesseract for the rest.
+
+    Scanned PDF pages keep Tesseract: they are pages, which its layout analysis handles well.
+    """
+    if settings.image_ocr_engine == "tesseract":
+        return tesseract
+    rapid = RapidOcrEngine(
+        models_dir=settings.ocr_models_dir,
+        orient=tesseract.upright if settings.ocr_auto_rotate else None,
+    )
+    return PreferredOcrEngine(rapid, RapidOcrEngine.languages, fallback=tesseract)
 
 
 def _file_source(

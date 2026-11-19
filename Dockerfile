@@ -23,8 +23,16 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=ghcr.io/astral-sh/uv:0.13.9 /uv /usr/local/bin/uv
 WORKDIR /app
+# Every "uv sync" mounts uv's download cache instead of leaving it in a layer (it would add the
+# size of every wheel to the image a second time).
 COPY backend/pyproject.toml backend/uv.lock ./
-RUN uv sync --locked --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project
+# RapidOCR's models (about 14 MB) are fetched now, not on first use: the app runs as a user that
+# cannot write to the package folder, and needs no network at run time. The script imports
+# nothing else from the app, so this layer is rebuilt only when the choice of models changes.
+ENV OCR_MODELS_DIR=/opt/ocr-models
+COPY backend/src/drive_text_extractor/ocr/rapid_models.py /tmp/rapid_models.py
+RUN python /tmp/rapid_models.py "$OCR_MODELS_DIR" && rm /tmp/rapid_models.py
 
 # --- 3. Test image: docker build --target test -t dte-test . && docker run --rm dte-test ----
 FROM base AS test
@@ -32,15 +40,15 @@ FROM base AS test
 RUN apt-get update \
     && apt-get install -y --no-install-recommends fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
-RUN uv sync --locked --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-install-project
 COPY backend/ ./
-RUN uv sync --locked
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked
 CMD ["pytest"]
 
 # --- 4. Runtime image -----------------------------------------------------------------------
 FROM base AS runtime
 COPY backend/src ./src
-RUN uv sync --locked --no-dev --no-editable && rm -rf ./src
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-editable && rm -rf ./src
 COPY --from=web /web/dist ./static
 COPY samples/input ./samples/input
 ENV STATIC_DIR=/app/static \

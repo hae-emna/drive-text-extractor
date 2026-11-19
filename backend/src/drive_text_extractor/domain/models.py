@@ -71,7 +71,10 @@ class ExtractionOptions:
 class OcrOutput:
     text: str
     confidence: float | None
-    """Mean word confidence (0-100), or ``None`` when no word was recognised."""
+    """How sure the engine is of the text it found (0-100), or ``None`` when it found none.
+
+    It says nothing about text the engine did not find at all.
+    """
 
 
 @dataclass(frozen=True, slots=True)

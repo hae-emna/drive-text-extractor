@@ -11,11 +11,14 @@ def make_settings() -> Settings:
 def test_defaults_apply_when_environment_is_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.delenv("LOG_LEVEL", raising=False)
+    monkeypatch.delenv("OCR_MODELS_DIR", raising=False)
 
     settings = make_settings()
 
     assert settings.google_api_key is None
     assert settings.log_level == "INFO"
+    assert settings.image_ocr_engine == "rapidocr"
+    assert settings.ocr_models_dir is None
 
 
 def test_values_are_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:

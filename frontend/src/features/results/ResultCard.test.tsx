@@ -33,7 +33,10 @@ describe('ResultCard', () => {
 
     expect(screen.getByRole('heading', { name: 'archive/scan.png' })).toBeInTheDocument()
     expect(screen.getByText('OCR')).toBeInTheDocument()
-    expect(screen.getByText('OCR confidence 91%')).toBeInTheDocument()
+    expect(screen.getByText('OCR confidence 91%')).toHaveAttribute(
+      'title',
+      expect.stringContaining('Text it did not find at all is not counted'),
+    )
     expect(screen.getByText('1.8 s')).toBeInTheDocument()
     expect(screen.getByText(/Facture/)).toHaveAttribute('dir', 'auto')
     expect(screen.queryByText(/Low OCR confidence/)).not.toBeInTheDocument()
