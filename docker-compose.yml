@@ -1,0 +1,16 @@
+# One command:   docker compose up --build        then open http://localhost:8000
+# Demo mode:     FILE_SOURCE=local docker compose up --build   (no API key, type "local:")
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    image: drive-text-extractor
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      FILE_SOURCE: ${FILE_SOURCE:-google_drive}
+    restart: unless-stopped
