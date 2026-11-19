@@ -12,7 +12,6 @@ import { useHealth } from './features/batch/useHealth'
 import { FileTable } from './features/folder/FileTable'
 import { LinkForm } from './features/folder/LinkForm'
 import { ListingSkeleton } from './features/folder/ListingSkeleton'
-import { SkippedFiles } from './features/folder/SkippedFiles'
 import { selectedInOrder } from './features/folder/selection'
 import { useFolderListing } from './features/folder/useFolderListing'
 import { ResultList } from './features/results/ResultList'
@@ -100,11 +99,6 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                   ? `File “${listing.listing.folder.name}”`
                   : `Choose files in “${listing.listing.folder.name}”`
               }
-              aside={
-                <p className="text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
-                  {selectedIds.length} of {plural(files.length, 'file')} selected
-                </p>
-              }
             >
               <div className="space-y-4">
                 {listing.listing.truncated && (
@@ -117,24 +111,27 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                     {listing.listing.skipped[0]?.reason ??
                       'Only PDF, PNG and JPEG files are processed.'}
                   </Alert>
-                ) : files.length === 0 ? (
-                  <Alert tone="info" title="Nothing to extract here">
-                    This folder has no PDF, PNG or JPEG files
-                    {listing.request.recursive
-                      ? '.'
-                      : ' at its top level. Try including subfolders.'}
-                  </Alert>
                 ) : (
-                  <FileTable
-                    files={files}
-                    selected={selected}
-                    onSelectionChange={setSelected}
-                    disabled={busy}
-                    results={results}
-                  />
-                )}
-                {listing.listing.kind === 'folder' && (
-                  <SkippedFiles skipped={listing.listing.skipped} />
+                  <>
+                    {files.length === 0 && (
+                      <Alert tone="info" title="Nothing to extract here">
+                        This folder has no PDF, PNG or JPEG files
+                        {listing.request.recursive
+                          ? '.'
+                          : ' at its top level. Try including subfolders.'}
+                      </Alert>
+                    )}
+                    {files.length + listing.listing.skipped.length > 0 && (
+                      <FileTable
+                        files={files}
+                        skipped={listing.listing.skipped}
+                        selected={selected}
+                        onSelectionChange={setSelected}
+                        disabled={busy}
+                        results={results}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </Section>

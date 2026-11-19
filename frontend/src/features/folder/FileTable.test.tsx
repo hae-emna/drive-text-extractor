@@ -97,17 +97,16 @@ describe('FileTable', () => {
     expect(screen.getByText(/Showing/)).toHaveTextContent('Showing 1–50 of 60 files')
   })
 
-  it('selects a page, then offers to extend the selection to every page', async () => {
+  it('selects a page, or every file on every page', async () => {
     const user = userEvent.setup()
     render(<Harness files={MANY} />)
 
     await user.click(screen.getByRole('checkbox', { name: 'Select all files on this page' }))
     expect(screen.getByText('25 selected')).toBeInTheDocument()
-    expect(screen.getByText(/All 25 files on this page are selected/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Select all 60 files' }))
+    await user.click(screen.getByRole('button', { name: 'Select all' }))
     expect(screen.getByText('60 selected')).toBeInTheDocument()
-    expect(screen.getByText(/All 60 files are selected/)).toBeInTheDocument()
+    expect(screen.getByText('60 of 60 files selected')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Clear selection' }))
     expect(screen.getByText('0 selected')).toBeInTheDocument()

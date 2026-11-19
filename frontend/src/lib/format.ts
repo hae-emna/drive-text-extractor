@@ -2,10 +2,31 @@ const TYPE_LABELS: Record<string, string> = {
   'application/pdf': 'PDF',
   'image/png': 'PNG',
   'image/jpeg': 'JPEG',
+  'text/plain': 'TXT',
+  'inode/directory': 'Folder',
+  'application/vnd.google-apps.folder': 'Folder',
+  'application/vnd.google-apps.shortcut': 'Shortcut',
+  'application/vnd.google-apps.document': 'Google Doc',
+  'application/vnd.google-apps.spreadsheet': 'Google Sheet',
+  'application/vnd.google-apps.presentation': 'Google Slides',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
+  'application/octet-stream': 'File',
 }
 
+const FOLDER_TYPES = new Set(['inode/directory', 'application/vnd.google-apps.folder'])
+
+/** "PDF", "Google Doc"; otherwise the last part of the subtype: "image/svg+xml" gives "SVG". */
 export function fileTypeLabel(mimeType: string): string {
-  return TYPE_LABELS[mimeType] ?? (mimeType.split('/').pop() ?? mimeType).toUpperCase()
+  const known = TYPE_LABELS[mimeType]
+  if (known) return known
+  const subtype = mimeType.split('/').pop() ?? mimeType
+  return (subtype.split('+')[0]?.split('.').pop() || subtype).toUpperCase()
+}
+
+export function isFolderType(mimeType: string): boolean {
+  return FOLDER_TYPES.has(mimeType)
 }
 
 export function formatBytes(bytes: number | null): string {
