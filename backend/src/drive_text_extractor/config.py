@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     max_pdf_pages: int = Field(default=200, ge=1)
     """PDFs with more pages are refused, to bound processing time per file."""
 
+    max_image_megapixels: int = Field(default=50, ge=1)
+    """Images above this size are refused before decoding (decompression-bomb guard)."""
+
+    ocr_timeout_seconds: int = Field(default=120, ge=5)
+    """Tesseract is stopped if one image or page takes longer than this."""
+
+    ocr_auto_rotate: bool = True
+    """Detect and fix sideways or upside-down scans before OCR (costs one extra Tesseract pass)."""
+
     @property
     def max_file_bytes(self) -> int:
         return self.max_file_size_mb * 1_000_000

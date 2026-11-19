@@ -4,14 +4,21 @@ Concrete implementations (Google Drive, pypdfium2, Tesseract...) live in other p
 plugged in at a single composition root. Services and tests only ever see these protocols.
 """
 
-from typing import Protocol
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Protocol
 
 from drive_text_extractor.domain.models import (
     ExtractionOptions,
     ExtractionResult,
     FolderListing,
+    OcrOutput,
     SourceFile,
 )
+
+if TYPE_CHECKING:
+    # Pillow images are the lingua franca of Python imaging; depending on the type (not the
+    # library) keeps OCR engines interchangeable without inventing an image abstraction.
+    from PIL.Image import Image
 
 
 class FileSource(Protocol):
@@ -50,3 +57,12 @@ class Extractor(Protocol):
         ...
 
     def extract(self, data: bytes, options: ExtractionOptions) -> ExtractionResult: ...
+
+
+class OcrEngine(Protocol):
+    """Recognises text in an image. Shared by the image extractor and the scanned-PDF fallback.
+
+    Implementations raise only ``OcrError`` subclasses.
+    """
+
+    def recognize(self, image: "Image", languages: Sequence[str]) -> OcrOutput: ...

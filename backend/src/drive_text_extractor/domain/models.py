@@ -55,6 +55,13 @@ class ExtractionOptions:
 
 
 @dataclass(frozen=True, slots=True)
+class OcrOutput:
+    text: str
+    confidence: float | None
+    """Mean word confidence (0-100), or ``None`` when no word was recognised."""
+
+
+@dataclass(frozen=True, slots=True)
 class PageText:
     number: int
     """1-based page number. Images are a single page."""
