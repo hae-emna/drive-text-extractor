@@ -1,0 +1,245 @@
+{
+  "schema_version": "1.0",
+  "job_id": "750a99bc11444d3cb82767b0f2f1707a",
+  "created_at": "2026-11-19T15:23:28.329678Z",
+  "finished_at": "2026-11-19T15:23:32.424608Z",
+  "languages": [
+    "eng",
+    "fra",
+    "ara"
+  ],
+  "source": {
+    "type": "local",
+    "link": "local:",
+    "folder": {
+      "id": ".",
+      "name": "input"
+    }
+  },
+  "summary": {
+    "total": 8,
+    "pending": 0,
+    "processing": 0,
+    "done": 7,
+    "failed": 1,
+    "cancelled": 0
+  },
+  "files": [
+    {
+      "file": {
+        "id": "avis-arabe.png",
+        "name": "avis-arabe.png",
+        "path": "avis-arabe.png",
+        "mime_type": "image/png",
+        "size_bytes": 14996,
+        "modified_time": "2026-11-19T15:12:21+00:00"
+      },
+      "status": "done",
+      "method": "ocr",
+      "mean_confidence": 92.3,
+      "low_confidence": false,
+      "char_count": 44,
+      "duration_ms": 934,
+      "text": "سيتم إغلاق المكتب يوم الجمعة\nشكرا على تفهمكم",
+      "pages": [
+        {
+          "number": 1,
+          "method": "ocr",
+          "confidence": 92.3,
+          "text": "سيتم إغلاق المكتب يوم الجمعة\nشكرا على تفهمكم"
+        }
+      ],
+      "error": null
+    },
+    {
+      "file": {
+        "id": "contract-scanned.pdf",
+        "name": "contract-scanned.pdf",
+        "path": "contract-scanned.pdf",
+        "mime_type": "application/pdf",
+        "size_bytes": 93975,
+        "modified_time": "2026-11-19T15:12:21+00:00"
+      },
+      "status": "done",
+      "method": "ocr",
+      "mean_confidence": 96.2,
+      "low_confidence": false,
+      "char_count": 241,
+      "duration_ms": 2311,
+      "text": "SERVICE AGREEMENT\n\nThis agreement is made in Nabeul on 3 November 2026\nbetween the Provider and the Client named below.\n\nThe Provider will host and monitor the Client's\ndocument processing platform for twelve months.\n\nSigned by both parties.",
+      "pages": [
+        {
+          "number": 1,
+          "method": "ocr",
+          "confidence": 96.2,
+          "text": "SERVICE AGREEMENT\n\nThis agreement is made in Nabeul on 3 November 2026\nbetween the Provider and the Client named below.\n\nThe Provider will host and monitor the Client's\ndocument processing platform for twelve months.\n\nSigned by both parties."
+        }
+      ],
+      "error": null
+    },
+    {
+      "file": {
+        "id": "corrupted.pdf",
+        "name": "corrupted.pdf",
+        "path": "corrupted.pdf",
+        "mime_type": "application/pdf",
+        "size_bytes": 300,
+        "modified_time": "2026-11-19T15:12:21+00:00"
+      },
+      "status": "failed",
+      "method": null,
+      "mean_confidence": null,
+      "low_confidence": false,
+      "char_count": 0,
+      "duration_ms": 1,
+      "text": "",
+      "pages": [],
+      "error": {
+        "code": "corrupt_file",
+        "message": "This file is damaged or is not what its extension says."
+      }
+    },
+    {
+      "file": {
+        "id": "facture-francais.jpg",
+        "name": "facture-francais.jpg",
+        "path": "facture-francais.jpg",
+        "mime_type": "image/jpeg",
+        "size_bytes": 43284,
+        "modified_time": "2026-11-19T15:12:21+00:00"
+      },
+      "status": "done",
+      "method": "ocr",
+      "mean_confidence": 95.1,
+      "low_confidence": false,
+      "char_count": 92,
+      "duration_ms": 879,
+      "text": "Bon de livraison n° 88\nLivré le 14 novembre 2026 a Hammamet\n\nRecu en bon état par le client.",
+      "pages": [
+        {
+          "number": 1,
+          "method": "ocr",
+          "confidence": 95.1,
+          "text": "Bon de livraison n° 88\nLivré le 14 novembre 2026 a Hammamet\n\nRecu en bon état par le client."
+        }
+      ],
+      "error": null
+    },
+    {
+      "file": {
+        "id": "invoice-native.pdf",
+        "name": "invoice-native.pdf",
+        "path": "invoice-native.pdf",
+        "mime_type": "application/pdf",
+        "size_bytes": 1319,
+        "modified_time": "2026-11-19T15:12:21+00:00"
+      },
+      "status": "done",
+      "method": "pdf_parser",
+      "mean_confidence": null,
+      "low_confidence": false,
+      "char_count": 314,
+      "duration_ms": 3,
+      "text": "FACTURE / INVOICE No 2026-0142\nDate : 12 novembre 2026\nClient : Société Atlas, Nabeul, Tunisie\nDésignation Montant\nAudit de sécurité cloud 1 800,000 TND\nSupport mensuel 450,000 TND\nTotal TTC : 2 250,000 TND\n\nConditions de paiement\nPaiement à 30 jours par virement bancaire.\nPayment terms: 30 days by bank transfer.",
+      "pages": [
+        {
+          "number": 1,
+          "method": "pdf_parser",
+          "confidence": null,
+          "text": "FACTURE / INVOICE No 2026-0142\nDate : 12 novembre 2026\nClient : Société Atlas, Nabeul, Tunisie\nDésignation Montant\nAudit de sécurité cloud 1 800,000 TND\nSupport mensuel 450,000 TND\nTotal TTC : 2 250,000 TND"
+        },
+        {
+          "number": 2,
+          "method": "pdf_parser",
+          "confidence": null,
+          "text": "Conditions de paiement\nPaiement à 30 jours par virement bancaire.\nPayment terms: 30 days by bank transfer."
+        }
+      ],
+      "error": null
+    },
+    {
+      "file": {
+        "id": "receipt-english.png",
+        "name": "receipt-english.png",
+        "path": "receipt-english.png",
+        "mime_type": "image/png",
+        "size_bytes": 22454,
+        "modified_time": "2026-11-19T15:12:21+00:00"
+      },
+      "status": "done",
+      "method": "ocr",
+      "mean_confidence": 95.3,
+      "low_confidence": false,
+      "char_count": 64,
+      "duration_ms": 758,
+      "text": "RECEIPT\n\nCoffee and pastries 18.500 TND\nPaid by card\n\nThank you!",
+      "pages": [
+        {
+          "number": 1,
+          "method": "ocr",
+          "confidence": 95.3,
+          "text": "RECEIPT\n\nCoffee and pastries 18.500 TND\nPaid by card\n\nThank you!"
+        }
+      ],
+      "error": null
+    },
+    {
+      "file": {
+        "id": "report-mixed.pdf",
+        "name": "report-mixed.pdf",
+        "path": "report-mixed.pdf",
+        "mime_type": "application/pdf",
+        "size_bytes": 69376,
+        "modified_time": "2026-11-19T15:12:21+00:00"
+      },
+      "status": "done",
+      "method": "mixed",
+      "mean_confidence": 95.4,
+      "low_confidence": false,
+      "char_count": 179,
+      "duration_ms": 1780,
+      "text": "Quarterly report Q3 2026\nTyped summary page with a text layer.\n\nANNEX A - Service levels\nAvailability target: 99.5 percent per month\n\nResponse time for critical incidents: 2 hours",
+      "pages": [
+        {
+          "number": 1,
+          "method": "pdf_parser",
+          "confidence": null,
+          "text": "Quarterly report Q3 2026\nTyped summary page with a text layer."
+        },
+        {
+          "number": 2,
+          "method": "ocr",
+          "confidence": 95.4,
+          "text": "ANNEX A - Service levels\nAvailability target: 99.5 percent per month\n\nResponse time for critical incidents: 2 hours"
+        }
+      ],
+      "error": null
+    },
+    {
+      "file": {
+        "id": "scan-rotated.jpg",
+        "name": "scan-rotated.jpg",
+        "path": "scan-rotated.jpg",
+        "mime_type": "image/jpeg",
+        "size_bytes": 54869,
+        "modified_time": "2026-11-19T15:12:21+00:00"
+      },
+      "status": "done",
+      "method": "ocr",
+      "mean_confidence": 96.6,
+      "low_confidence": false,
+      "char_count": 122,
+      "duration_ms": 1155,
+      "text": "Delivery note 2026-77\nThis page was scanned sideways\nand must be straightened before OCR.\n\nReceived by the warehouse team.",
+      "pages": [
+        {
+          "number": 1,
+          "method": "ocr",
+          "confidence": 96.6,
+          "text": "Delivery note 2026-77\nThis page was scanned sideways\nand must be straightened before OCR.\n\nReceived by the warehouse team."
+        }
+      ],
+      "error": null
+    }
+  ]
+}
