@@ -58,6 +58,6 @@ markers = [
 ]
 
 [[tool.mypy.overrides]]
-# pypdfium2 ships no type information.
-module = ["pypdfium2", "pypdfium2.*"]
+# These libraries ship no type information.
+module = ["pypdfium2", "pypdfium2.*", "pytesseract"]
 ignore_missing_imports = true

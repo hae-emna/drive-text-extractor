@@ -1,0 +1,75 @@
+"""Tesseract implementation of the ``OcrEngine`` port.
+
+Tesseract (Apache-2.0) is called through pytesseract (Apache-2.0), which runs the ``tesseract``
+binary in a subprocess. The subprocess releases the GIL, so several files can be recognised in
+parallel from a thread pool.
+"""
+
+import csv
+import io
+import logging
+from collections.abc import Sequence
+from statistics import fmean
+
+import pytesseract
+from PIL.Image import Image
+
+from drive_text_extractor.domain.errors import OcrError, OcrTimeoutError
+from drive_text_extractor.domain.models import OcrOutput
+from drive_text_extractor.extractors.text import normalize_text
+
+logger = logging.getLogger(__name__)
+
+
+class TesseractEngine:
+    def __init__(self, *, timeout_seconds: int = 120) -> None:
+        self._timeout = timeout_seconds
+
+    def recognize(self, image: Image, languages: Sequence[str]) -> OcrOutput:
+        lang = "+".join(languages)
+        try:
+            # One Tesseract run produces both the plain text and the per-word TSV.
+            text, tsv = pytesseract.run_and_get_multiple_output(
+                image, extensions=["txt", "tsv"], lang=lang, timeout=self._timeout
+            )
+        except pytesseract.TesseractNotFoundError as exc:
+            raise OcrError("The OCR engine (Tesseract) is not installed on the server.") from exc
+        except pytesseract.TesseractError as exc:
+            raise OcrError(_explain(exc, lang)) from exc
+        except RuntimeError as exc:
+            # pytesseract signals a timeout with a bare RuntimeError.
+            if "timeout" in str(exc).lower():
+                raise OcrTimeoutError() from exc
+            raise OcrError() from exc
+        return OcrOutput(text=normalize_text(text), confidence=mean_word_confidence(tsv))
+
+    @staticmethod
+    def available_languages() -> list[str]:
+        """Installed language packs, or an empty list when Tesseract is missing."""
+        try:
+            languages: list[str] = pytesseract.get_languages()
+        except (pytesseract.TesseractNotFoundError, pytesseract.TesseractError, OSError):
+            logger.warning("Tesseract is not available; OCR will fail")
+            return []
+        return sorted(lang for lang in languages if lang != "osd")
+
+
+def mean_word_confidence(tsv: str) -> float | None:
+    """Average Tesseract confidence over recognised words.
+
+    Rows that are not words (pages, blocks, lines) carry a confidence of -1 and are ignored, as
+    are empty words.
+    """
+    rows = csv.DictReader(io.StringIO(tsv), delimiter="\t", quoting=csv.QUOTE_NONE)
+    scores = [
+        float(row["conf"])
+        for row in rows
+        if row.get("conf") not in (None, "") and float(row["conf"]) >= 0 and row["text"].strip()
+    ]
+    return round(fmean(scores), 1) if scores else None
+
+
+def _explain(error: pytesseract.TesseractError, lang: str) -> str:
+    if "Failed loading language" in str(error.message):
+        return f"The OCR language pack '{lang}' is not installed on the server."
+    return "Text recognition failed on this file."
