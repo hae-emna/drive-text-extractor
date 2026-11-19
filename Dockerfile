@@ -27,6 +27,12 @@ WORKDIR /app
 # size of every wheel to the image a second time).
 COPY backend/pyproject.toml backend/uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-install-project
+# RapidOCR's models (about 14 MB) are fetched now, not on first use: the app runs as a user that
+# cannot write to the package folder, and needs no network at run time. The script imports
+# nothing else from the app, so this layer is rebuilt only when the choice of models changes.
+ENV OCR_MODELS_DIR=/opt/ocr-models
+COPY backend/src/drive_text_extractor/ocr/rapid_models.py /tmp/rapid_models.py
+RUN python /tmp/rapid_models.py "$OCR_MODELS_DIR" && rm /tmp/rapid_models.py
 
 # --- 3. Test image: docker build --target test -t dte-test . && docker run --rm dte-test ----
 FROM base AS test
