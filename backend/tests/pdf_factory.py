@@ -3,10 +3,10 @@
 from collections.abc import Sequence
 
 
-def make_pdf(pages: Sequence[str | None]) -> bytes:
+def make_pdf(pages: Sequence[str | None], page_size: tuple[int, int] = (612, 792)) -> bytes:
     """One entry per page: its text (``\\n`` starts a new line), or ``None`` for a blank page.
 
-    Text uses the standard Helvetica font, so it must be Latin-1.
+    Text uses the standard Helvetica font, so it must be Latin-1. ``page_size`` is in points.
     """
     objects: dict[int, bytes] = {
         1: b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -17,7 +17,7 @@ def make_pdf(pages: Sequence[str | None]) -> bytes:
         page_id, content_id = 4 + 2 * index, 5 + 2 * index
         kids.append(f"{page_id} 0 R")
         objects[page_id] = (
-            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_size[0]} {page_size[1]}] "
             f"/Resources << /Font << /F1 3 0 R >> >> /Contents {content_id} 0 R >>"
         ).encode()
         stream = _content_stream(text)
