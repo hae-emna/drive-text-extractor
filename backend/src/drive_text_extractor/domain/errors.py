@@ -102,3 +102,25 @@ class OcrError(ExtractionError):
 class OcrTimeoutError(OcrError):
     code = "ocr_timeout"
     default_message = "Text recognition took too long and was stopped."
+
+
+# --- Request errors: what the user asked for cannot be done -------------------------------
+
+
+class RequestError(DomainError):
+    """The request itself is invalid, independently of any file."""
+
+
+class InvalidSelectionError(RequestError):
+    code = "invalid_selection"
+    default_message = "Select at least one file from the folder."
+
+
+class UnsupportedLanguageError(RequestError):
+    code = "unsupported_language"
+    default_message = "Choose at least one supported OCR language."
+
+
+class JobNotFoundError(RequestError):
+    code = "job_not_found"
+    default_message = "This batch does not exist or has expired. Start a new one."

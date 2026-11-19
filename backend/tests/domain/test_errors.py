@@ -16,7 +16,8 @@ def all_error_classes() -> list[type[errors.DomainError]]:
 CONCRETE = [
     cls
     for cls in all_error_classes()
-    if cls not in (errors.DomainError, errors.SourceError, errors.ExtractionError)
+    if cls
+    not in (errors.DomainError, errors.SourceError, errors.ExtractionError, errors.RequestError)
 ]
 
 
