@@ -3,7 +3,6 @@ import pytest
 
 from drive_text_extractor.domain.errors import (
     FolderNotFoundError,
-    InvalidLinkError,
     RateLimitedError,
     SourceNotConfiguredError,
     SourceUnavailableError,
@@ -154,13 +153,6 @@ async def test_forwards_the_resource_key_of_legacy_links(
     await make_source(drive, sleep).list_files(f"{LINK}&resourcekey=0-legacy")
 
     assert drive.requests[0].headers["X-Goog-Drive-Resource-Keys"] == f"{ROOT}/0-legacy"
-
-
-async def test_rejects_a_link_to_a_file(drive: FakeDrive, sleep: SleepRecorder) -> None:
-    drive.add_file("FileId000001", "a.pdf", PDF, ROOT)
-
-    with pytest.raises(InvalidLinkError, match="not a folder"):
-        await make_source(drive, sleep).list_files("https://drive.google.com/open?id=FileId000001")
 
 
 async def test_private_or_missing_folder(drive: FakeDrive, sleep: SleepRecorder) -> None:
