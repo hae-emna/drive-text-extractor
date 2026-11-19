@@ -13,4 +13,7 @@ services:
         required: false
     environment:
       FILE_SOURCE: ${FILE_SOURCE:-google_drive}
+      # Paths inside the container, whatever a local .env says for development.
+      LOCAL_FOLDER: /app/samples/input
+      STATIC_DIR: /app/static
     restart: unless-stopped
