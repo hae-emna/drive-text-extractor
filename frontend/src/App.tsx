@@ -5,7 +5,7 @@ import { Button } from './components/Button'
 import { Section } from './components/Section'
 import { Spinner } from './components/Spinner'
 import { BatchProgress } from './features/batch/BatchProgress'
-import { DEFAULT_LANGUAGES } from './features/batch/languages'
+import { DEFAULT_LANGUAGES, usableLanguages } from './features/batch/languages'
 import { LanguagePicker } from './features/batch/LanguagePicker'
 import { useBatchJob } from './features/batch/useBatchJob'
 import { useHealth } from './features/batch/useHealth'
@@ -26,7 +26,9 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
   const { state: listing, load } = useFolderListing()
   const batch = useBatchJob(pollIntervalMs)
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
-  const [languages, setLanguages] = useState<LanguageCode[]>(['eng', 'fra'])
+  const [chosenLanguages, setLanguages] = useState<LanguageCode[]>(['eng', 'fra'])
+  const offeredLanguages = health?.languages ?? DEFAULT_LANGUAGES
+  const languages = usableLanguages(chosenLanguages, offeredLanguages)
 
   const files = listing.status === 'loaded' ? listing.listing.files : []
   const fileIds = files.map((file) => file.id)
@@ -141,7 +143,7 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                 <div className="space-y-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <LanguagePicker
-                      languages={health?.languages ?? DEFAULT_LANGUAGES}
+                      languages={offeredLanguages}
                       value={languages}
                       onChange={setLanguages}
                       disabled={busy}
