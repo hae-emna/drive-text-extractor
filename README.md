@@ -277,7 +277,6 @@ All settings are environment variables, documented in [`.env.example`](.env.exam
 - **Not supported yet.**
   - Google Docs, Sheets and Slides are skipped instead of exported to PDF.
   - Folder shortcuts are not followed.
-  - Pre-2021 `resourcekey` links work for the linked folder or file only, not for items inside a folder.
 - **OCR quality depends on the scan.** Very low-resolution photos, handwriting and complex backgrounds give poor results; the confidence score says so.
 - **Image size.** The Docker image is about 520 MB, mostly Python and Tesseract with its language data.
 
