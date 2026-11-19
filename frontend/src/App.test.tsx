@@ -13,7 +13,7 @@ afterEach(() => {
 async function listFolder() {
   const user = userEvent.setup()
   render(<App pollIntervalMs={5} />)
-  await user.type(screen.getByLabelText('Public Google Drive folder link'), LINK)
+  await user.type(screen.getByLabelText('Public Google Drive link (folder or file)'), LINK)
   await user.click(screen.getByRole('button', { name: 'List files' }))
   return user
 }
@@ -25,7 +25,7 @@ describe('App', () => {
       vi.fn(
         fakeBackend({
           'GET /api/health': { body: HEALTH },
-          'POST /api/folders/list': { body: LISTING },
+          'POST /api/files/list': { body: LISTING },
         }),
       ),
     )
@@ -46,7 +46,7 @@ describe('App', () => {
       'fetch',
       vi.fn(
         fakeBackend({
-          'POST /api/folders/list': {
+          'POST /api/files/list': {
             status: 404,
             body: {
               error: { code: 'folder_not_found', message: 'Folder not found or not public.' },
@@ -62,7 +62,7 @@ describe('App', () => {
 
   it('suggests including subfolders when the top level has nothing to extract', async () => {
     const empty = { ...LISTING, files: [] }
-    vi.stubGlobal('fetch', vi.fn(fakeBackend({ 'POST /api/folders/list': { body: empty } })))
+    vi.stubGlobal('fetch', vi.fn(fakeBackend({ 'POST /api/files/list': { body: empty } })))
     await listFolder()
 
     expect(await screen.findByText(/Try including subfolders/)).toBeInTheDocument()
@@ -84,7 +84,7 @@ describe('App batch', () => {
     const fetchMock = vi.fn(
       fakeBackend({
         'GET /api/health': { body: HEALTH },
-        'POST /api/folders/list': { body: LISTING },
+        'POST /api/files/list': { body: LISTING },
         'POST /api/jobs': { status: 202, body: running },
         'GET /api/jobs/job-1': { body: finished },
       }),
@@ -121,7 +121,7 @@ describe('App batch', () => {
       vi.fn(
         fakeBackend({
           'GET /api/health': { body: HEALTH },
-          'POST /api/folders/list': { body: LISTING },
+          'POST /api/files/list': { body: LISTING },
           'POST /api/jobs': {
             status: 400,
             body: {
@@ -150,9 +150,55 @@ describe('App demo mode', () => {
     render(<App />)
 
     expect(await screen.findByText(/Demo mode: the server reads its sample folder/)).toBeVisible()
-    expect(screen.getByLabelText('Public Google Drive folder link')).toHaveAttribute(
+    expect(screen.getByLabelText('Public Google Drive link (folder or file)')).toHaveAttribute(
       'placeholder',
       'local:',
     )
+  })
+})
+
+describe('App single-file links', () => {
+  it('lists a linked file under its own name and selects it', async () => {
+    const single = {
+      kind: 'file' as const,
+      folder: { id: 'pdf-1', name: 'invoice.pdf' },
+      files: [LISTING.files[0]!],
+      skipped: [],
+      truncated: false,
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        fakeBackend({
+          'GET /api/health': { body: HEALTH },
+          'POST /api/files/list': { body: single },
+        }),
+      ),
+    )
+    await listFolder()
+
+    expect(await screen.findByText('File “invoice.pdf”')).toBeInTheDocument()
+    expect(screen.getByText('1 of 1 file selected')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Extract text from 1 file' })).toBeEnabled()
+  })
+
+  it('explains why a linked file cannot be extracted', async () => {
+    const doc = {
+      kind: 'file' as const,
+      folder: { id: 'doc-1', name: 'notes' },
+      files: [],
+      skipped: [LISTING.skipped[0]!],
+      truncated: false,
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        fakeBackend({ 'GET /api/health': { body: HEALTH }, 'POST /api/files/list': { body: doc } }),
+      ),
+    )
+    await listFolder()
+
+    expect(await screen.findByText('This file cannot be extracted')).toBeInTheDocument()
+    expect(screen.getByText(/Export them to PDF first/)).toBeInTheDocument()
   })
 })

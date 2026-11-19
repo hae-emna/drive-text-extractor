@@ -19,18 +19,24 @@ export function useFolderListing() {
   // Only the latest request may update the state: an older, slower answer is ignored.
   const latest = useRef(0)
 
-  const load = useCallback(async (link: string, recursive: boolean) => {
-    const requestNumber = ++latest.current
-    setState({ status: 'loading' })
-    try {
-      const listing = await api.listFolder(link, recursive)
-      if (requestNumber === latest.current) {
+  /** Resolves with the listing, or null if it failed or a newer request replaced it. */
+  const load = useCallback(
+    async (link: string, recursive: boolean): Promise<FolderListing | null> => {
+      const requestNumber = ++latest.current
+      setState({ status: 'loading' })
+      try {
+        const listing = await api.listFiles(link, recursive)
+        if (requestNumber !== latest.current) return null
         setState({ status: 'loaded', listing, request: { link, recursive } })
+        return listing
+      } catch (error) {
+        if (requestNumber === latest.current)
+          setState({ status: 'error', error: toApiError(error) })
+        return null
       }
-    } catch (error) {
-      if (requestNumber === latest.current) setState({ status: 'error', error: toApiError(error) })
-    }
-  }, [])
+    },
+    [],
+  )
 
   return { state, load }
 }

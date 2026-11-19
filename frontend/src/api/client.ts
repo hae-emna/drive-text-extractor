@@ -54,8 +54,9 @@ const post = (body?: unknown): RequestInit => ({
 export const api = {
   health: () => request<Health>('/api/health'),
 
-  listFolder: (link: string, recursive: boolean) =>
-    request<FolderListing>('/api/folders/list', post({ link, recursive })),
+  /** What a link points to: the files of a folder, or a single file. */
+  listFiles: (link: string, recursive: boolean) =>
+    request<FolderListing>('/api/files/list', post({ link, recursive })),
 
   startJob: (body: StartJobRequest) => request<Job>('/api/jobs', post(body)),
 

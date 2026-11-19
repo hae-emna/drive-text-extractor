@@ -37,10 +37,12 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
     ? new Map<string, FileResult>(job.files.map((result) => [result.file.id, result]))
     : undefined
 
-  function handleList(link: string, recursive: boolean) {
+  async function handleList(link: string, recursive: boolean) {
     setSelected(new Set())
     batch.reset()
-    void load(link, recursive)
+    const result = await load(link, recursive)
+    // A link to one file means that file is what the user wants: select it for them.
+    if (result?.kind === 'file') setSelected(new Set(result.files.map((file) => file.id)))
   }
 
   function handleExtract() {
@@ -71,7 +73,7 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
             <LinkForm
               busy={listing.status === 'loading'}
               demoMode={health?.source === 'local'}
-              onSubmit={handleList}
+              onSubmit={(link, recursive) => void handleList(link, recursive)}
             />
           </fieldset>
         </Section>
@@ -86,7 +88,11 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
           <>
             <Section
               step="02"
-              title={`Choose files in “${listing.listing.folder.name}”`}
+              title={
+                listing.listing.kind === 'file'
+                  ? `File “${listing.listing.folder.name}”`
+                  : `Choose files in “${listing.listing.folder.name}”`
+              }
               aside={
                 <p className="text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
                   {selectedIds.length} of {plural(files.length, 'file')} selected
@@ -99,7 +105,12 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                     Only the first {plural(files.length, 'file')} are listed.
                   </Alert>
                 )}
-                {files.length === 0 ? (
+                {files.length === 0 && listing.listing.kind === 'file' ? (
+                  <Alert tone="info" title="This file cannot be extracted">
+                    {listing.listing.skipped[0]?.reason ??
+                      'Only PDF, PNG and JPEG files are processed.'}
+                  </Alert>
+                ) : files.length === 0 ? (
                   <Alert tone="info" title="Nothing to extract here">
                     This folder has no PDF, PNG or JPEG files
                     {listing.request.recursive
@@ -116,7 +127,9 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                     results={results}
                   />
                 )}
-                <SkippedFiles skipped={listing.listing.skipped} />
+                {listing.listing.kind === 'folder' && (
+                  <SkippedFiles skipped={listing.listing.skipped} />
+                )}
               </div>
             </Section>
 

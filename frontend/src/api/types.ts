@@ -30,6 +30,8 @@ export interface Folder {
 }
 
 export interface FolderListing {
+  kind: 'folder' | 'file'
+  /** The folder, or the file itself when the link points to a single file. */
   folder: Folder
   files: DriveFile[]
   skipped: SkippedFile[]

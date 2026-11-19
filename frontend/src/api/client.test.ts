@@ -20,10 +20,10 @@ describe('api client', () => {
     const listing = { folder: { id: 'f', name: 'F' }, files: [], skipped: [], truncated: false }
     const fetchMock = respondWith(200, listing)
 
-    await expect(api.listFolder('https://drive.google.com/x', true)).resolves.toEqual(listing)
+    await expect(api.listFiles('https://drive.google.com/x', true)).resolves.toEqual(listing)
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('/api/folders/list')
+    expect(url).toBe('/api/files/list')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body as string)).toEqual({
       link: 'https://drive.google.com/x',
@@ -34,7 +34,7 @@ describe('api client', () => {
   it('turns the backend error envelope into an ApiError', async () => {
     respondWith(404, { error: { code: 'folder_not_found', message: 'Folder not found.' } })
 
-    const error = await api.listFolder('x', false).catch((e: unknown) => e)
+    const error = await api.listFiles('x', false).catch((e: unknown) => e)
 
     expect(error).toBeInstanceOf(ApiError)
     expect(error).toMatchObject({
