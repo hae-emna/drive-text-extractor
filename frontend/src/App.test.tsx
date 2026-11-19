@@ -19,7 +19,7 @@ async function listFolder() {
 }
 
 describe('App', () => {
-  it('lists the folder, keeps the selection count visible and explains skipped files', async () => {
+  it('lists the folder, keeps the selection count visible and flags skipped files', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
@@ -37,7 +37,7 @@ describe('App', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Select all files' }))
     expect(screen.getByText('3 of 3 files selected')).toBeInTheDocument()
 
-    await user.click(screen.getByText('1 item not offered for extraction'))
+    expect(screen.getByText('unsupported')).toBeInTheDocument()
     expect(screen.getByText(/Export them to PDF first/)).toBeVisible()
   })
 
