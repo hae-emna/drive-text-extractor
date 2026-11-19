@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { job, LISTING, result } from '../../test/fixtures'
+import { driveFile, job, LISTING, result } from '../../test/fixtures'
 import { ResultList } from './ResultList'
 
 const [pdf, png] = LISTING.files as [(typeof LISTING.files)[0], (typeof LISTING.files)[0]]
@@ -35,5 +35,22 @@ describe('ResultList', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Select failed files to retry' }))
 
     expect(onSelectFailed).toHaveBeenCalledWith(['png-1'])
+  })
+
+  it('shows ten results per page', async () => {
+    const files = Array.from({ length: 12 }, (_, index) =>
+      driveFile({ id: `f-${index + 1}`, name: `doc-${index + 1}.pdf` }),
+    )
+    const finished = job(files.map((file) => result(file, { status: 'done', text: file.name })))
+    render(<ResultList job={finished} onSelectFailed={() => {}} />)
+
+    expect(screen.getAllByRole('article')).toHaveLength(10)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Next page' }))
+
+    expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual([
+      'doc-11.pdf',
+      'doc-12.pdf',
+    ])
   })
 })
