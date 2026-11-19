@@ -1,8 +1,9 @@
 import io
 
+import pytest
 from PIL import Image
 
-from drive_text_extractor.ocr.preprocess import MAX_UPSCALE, TARGET_LONG_SIDE, prepare_for_ocr
+from drive_text_extractor.ocr.preprocess import MAX_UPSCALE, prepare_for_ocr
 from tests.images import encode
 
 EXIF_ORIENTATION = 0x0112
@@ -22,7 +23,7 @@ def test_transparent_background_becomes_white_not_black() -> None:
 
 
 def test_small_images_are_upscaled_towards_the_target_size() -> None:
-    assert prepare_for_ocr(Image.new("L", (1000, 500), 255)).size == (TARGET_LONG_SIDE, 1000)
+    assert prepare_for_ocr(Image.new("L", (800, 400), 255)).size == (1600, 800)
 
 
 def test_upscaling_is_capped() -> None:
@@ -31,8 +32,9 @@ def test_upscaling_is_capped() -> None:
     assert prepared.size == (int(100 * MAX_UPSCALE), int(50 * MAX_UPSCALE))
 
 
-def test_large_images_keep_their_size() -> None:
-    assert prepare_for_ocr(Image.new("L", (3000, 2000), 255)).size == (3000, 2000)
+@pytest.mark.parametrize("size", [(1000, 700), (1654, 2339), (3000, 2000)])
+def test_images_at_scan_resolution_keep_their_size(size: tuple[int, int]) -> None:
+    assert prepare_for_ocr(Image.new("L", size, 255)).size == size
 
 
 def test_exif_orientation_is_applied() -> None:
