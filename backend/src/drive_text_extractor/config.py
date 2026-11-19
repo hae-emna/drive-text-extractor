@@ -6,7 +6,7 @@ The rest of the code receives a ``Settings`` instance and never touches ``os.env
 
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,3 +22,14 @@ class Settings(BaseSettings):
     """Google Cloud API key with the Drive API enabled. Only needed for the Drive source."""
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
+    # --- Source limits ---
+    max_file_size_mb: int = Field(default=25, ge=1, le=500)
+    """Files above this size are refused before (or while) downloading."""
+
+    max_listed_files: int = Field(default=1000, ge=1)
+    """Listing stops after this many files and the folder is flagged as truncated."""
+
+    @property
+    def max_file_bytes(self) -> int:
+        return self.max_file_size_mb * 1_000_000
