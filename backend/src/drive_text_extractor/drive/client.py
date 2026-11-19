@@ -10,6 +10,7 @@ import httpx
 
 from drive_text_extractor.domain.errors import (
     FileNotAccessibleError,
+    FileTooLargeError,
     FolderNotFoundError,
     InvalidLinkError,
     RateLimitedError,
@@ -18,7 +19,7 @@ from drive_text_extractor.domain.errors import (
     SourceUnavailableError,
 )
 from drive_text_extractor.domain.models import FolderListing, SkippedFile, SourceFile
-from drive_text_extractor.drive.links import FolderLink, parse_folder_link
+from drive_text_extractor.drive.links import FolderLink, is_valid_id, parse_folder_link
 
 API_ROOT = "https://www.googleapis.com/drive/v3"
 FOLDER_MIME = "application/vnd.google-apps.folder"
@@ -57,6 +58,7 @@ class GoogleDriveSource:
         http: httpx.AsyncClient,
         api_key: str | None,
         *,
+        max_file_bytes: int,
         max_items: int = 1000,
         page_size: int = 1000,
         retry: RetryPolicy | None = None,
@@ -64,6 +66,7 @@ class GoogleDriveSource:
     ) -> None:
         self._http = http
         self._api_key = api_key
+        self._max_file_bytes = max_file_bytes
         self._max_items = max_items
         self._page_size = page_size
         self._retry = retry or RetryPolicy()
@@ -115,6 +118,32 @@ class GoogleDriveSource:
                     return _listing(ref, folder, files, skipped, truncated=True)
                 files.append(_to_source_file(item, path if prefix else ""))
         return _listing(ref, folder, files, skipped, truncated=False)
+
+    async def download(self, file: SourceFile) -> bytes:
+        limit = self._max_file_bytes
+        if file.size_bytes is not None and file.size_bytes > limit:
+            raise FileTooLargeError(_too_large(file.size_bytes, limit))
+        if not is_valid_id(file.id):
+            raise FileNotAccessibleError()
+
+        response = await self._send(
+            f"{API_ROOT}/files/{file.id}",
+            {"alt": "media", "supportsAllDrives": "true"},
+            {},
+            not_found=FileNotAccessibleError,
+            stream=True,
+        )
+        received = bytearray()
+        try:
+            async for chunk in response.aiter_bytes():
+                received += chunk
+                if len(received) > limit:
+                    raise FileTooLargeError(_too_large(None, limit))
+        except httpx.TransportError as exc:
+            raise SourceUnavailableError("The download was interrupted. Try again.") from exc
+        finally:
+            await response.aclose()
+        return bytes(received)
 
     async def _children(self, folder_id: str, headers: dict[str, str]) -> AsyncIterator[Json]:
         # folder_id matched a strict [A-Za-z0-9_-] pattern, so it is safe inside the query.
@@ -262,3 +291,10 @@ def _listing(
         skipped=tuple(skipped),
         truncated=truncated,
     )
+
+
+def _too_large(size: int | None, limit: int) -> str:
+    limit_mb = limit / 1_000_000
+    if size is None:
+        return f"This file is larger than the {limit_mb:g} MB limit."
+    return f"This file is {size / 1_000_000:.1f} MB; the limit is {limit_mb:g} MB."

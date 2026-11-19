@@ -49,6 +49,11 @@ def parse_folder_link(link: str) -> FolderLink:
     return FolderLink(folder_id=folder_id, resource_key=_first(query.get("resourcekey")))
 
 
+def is_valid_id(value: str) -> bool:
+    """Whether ``value`` looks like a Drive id and is therefore safe to put in an API URL."""
+    return _ID_PATTERN.fullmatch(value) is not None
+
+
 def _folder_id_from(path: str, query: dict[str, list[str]]) -> str | None:
     if match := _FOLDER_IN_PATH.search(path):
         return match.group(1)

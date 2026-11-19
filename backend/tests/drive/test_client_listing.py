@@ -50,6 +50,7 @@ def make_source(
     return GoogleDriveSource(
         drive.client(),
         api_key,
+        max_file_bytes=10_000,
         max_items=max_items,
         page_size=page_size,
         retry=RetryPolicy(attempts=3, base_delay=0.5, max_delay=4.0),
