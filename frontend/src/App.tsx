@@ -151,9 +151,11 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                     />
                     <Button onClick={handleExtract} disabled={selectedIds.length === 0 || busy}>
                       {batch.starting && <Spinner />}
-                      {selectedIds.length === 0
-                        ? 'Select files to extract'
-                        : `Extract text from ${plural(selectedIds.length, 'file')}`}
+                      {batch.starting
+                        ? 'Starting…'
+                        : selectedIds.length === 0
+                          ? 'Select files to extract'
+                          : `Extract text from ${plural(selectedIds.length, 'file')}`}
                     </Button>
                   </div>
                   <p className="text-xs text-zinc-500">
@@ -170,7 +172,9 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                       Retrying… processing continues on the server.
                     </Alert>
                   )}
-                  {job && <BatchProgress job={job} onCancel={() => void batch.cancel()} />}
+                  {job && (
+                    <BatchProgress key={job.id} job={job} onCancel={() => void batch.cancel()} />
+                  )}
                 </div>
               </Section>
             )}
