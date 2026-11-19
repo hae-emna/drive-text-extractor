@@ -9,12 +9,19 @@ Last checked on 2026-11-19 against the exact versions in `backend/uv.lock`,
 
 ## Summary
 
-- **No GPL or AGPL code is linked into or bundled with the application.** Every library the
-  application imports or bundles is permissive (MIT, BSD, Apache-2.0 and similar).
-- Two **weak-copyleft** components are present, both used unmodified, which their licences allow
-  in closed-source products:
-  - `certifi` (MPL-2.0): a CA certificate bundle used by `httpx`.
+- **No GPL or AGPL code is linked into or bundled with the application**, apart from GCC's
+  Fortran runtime inside the OpenCV and NumPy wheels, whose GCC Runtime Library Exception allows
+  it in any program. Every library the application imports is permissive (MIT, BSD, Apache-2.0 and
+  similar).
+- A few **weak-copyleft** components are present, all used unmodified, which their licences
+  allow in closed-source products:
+  - `certifi` (MPL-2.0): a CA certificate bundle used by `httpx` and `requests`.
+  - `tqdm` (MPL-2.0 and MIT): progress bars, pulled in by RapidOCR.
   - `libfribidi0` (LGPL-2.1+): a Debian system library loaded dynamically at runtime.
+  - FFmpeg and libquadmath (LGPL-2.1+) inside the `opencv-python-headless` wheel, and GEOS
+    (LGPL-2.1) inside the `shapely` wheel: shared libraries loaded at runtime, which a user can
+    replace, as the LGPL requires.
+- The OCR models (PaddleOCR's PP-OCRv5, converted to ONNX by RapidOCR) are **Apache-2.0**.
 - The licences that were a real risk for this project (PyMuPDF and Ghostscript under AGPL-3.0,
   Poppler under GPL) were [avoided by design](#alternatives-rejected-for-licence-reasons).
 - Obligations that remain: keep the licence and NOTICE texts of the Apache-2.0 and BSD components
@@ -40,6 +47,8 @@ Last checked on 2026-11-19 against the exact versions in `backend/uv.lock`,
 | **pypdfium2** | 5.15.2 | Apache-2.0 or BSD-3-Clause | Yes | PDF text layer and page rendering. Bundles PDFium, see below |
 | **pytesseract** | 0.3.13 | Apache-2.0 | Yes | Runs the Tesseract binary in a subprocess |
 | **pillow** | 13.0.0 | MIT-CMU (HPND) | Yes | Image preparation for OCR. Bundles codecs, see below |
+| **rapidocr** | 3.10.0 | Apache-2.0 | Yes | OCR for photos and screenshots. Its wheel also ships `MODEL_LICENSES.md` |
+| **onnxruntime** | 1.32.0 | MIT | Yes | Runs the OCR models. Third-party notices in the wheel (`ThirdPartyNotices.txt`) |
 
 ### Transitive Python packages
 
@@ -49,6 +58,20 @@ Last checked on 2026-11-19 against the exact versions in `backend/uv.lock`,
 | annotated-types | 0.8.0 | MIT | Yes | |
 | anyio | 4.16.0 | MIT | Yes | |
 | certifi | 2026.10.23 | MPL-2.0 | Yes | Weak copyleft at file level; used unmodified. Changes to its own files would have to be published |
+| charset-normalizer | 3.5.2 | MIT | Yes | Through requests |
+| colorlog | 6.12.0 | MIT | Yes | Through rapidocr |
+| flatbuffers | 25.12.19 | Apache-2.0 | Yes | Through onnxruntime |
+| numpy | 2.5.5 | BSD-3-Clause (and 0BSD, MIT, Zlib, CC0 for parts) | Yes | Through rapidocr and onnxruntime. Bundles OpenBLAS, see below |
+| omegaconf | 2.4.0 | BSD-3-Clause | Yes | RapidOCR's configuration |
+| **opencv-python-headless** | 5.1.0.95 | Apache-2.0 | Yes | Through rapidocr (image operations of the text detector). Bundles native libraries, see below |
+| protobuf | 7.36.2 | BSD-3-Clause | Yes | Through onnxruntime |
+| pyclipper | 1.4.0 | MIT (Clipper: Boost Software Licence) | Yes | Through rapidocr |
+| pyyaml | 6.0.3 | MIT | Yes | Through omegaconf |
+| requests | 2.34.2 | Apache-2.0 | Yes | Through rapidocr (model download) |
+| shapely | 2.2.0 | BSD-3-Clause | Yes | Through rapidocr. Bundles GEOS, see below |
+| six | 1.17.0 | MIT | Yes | |
+| tqdm | 4.70.1 | MPL-2.0 and MIT | Yes | Through rapidocr. Same MPL-2.0 terms as certifi; used unmodified |
+| urllib3 | 2.8.0 | MIT | Yes | Through requests |
 | click | 8.5.1 | BSD-3-Clause | Yes | |
 | h11 | 0.16.0 | MIT | Yes | |
 | httpcore | 1.0.9 | BSD-3-Clause | Yes | |
@@ -69,6 +92,29 @@ Last checked on 2026-11-19 against the exact versions in `backend/uv.lock`,
 | libjpeg-turbo | pillow | IJG, BSD-3-Clause, zlib | Yes | |
 | libpng, zlib, libtiff, libwebp, libavif, lcms2, OpenJPEG, brotli, zstd, liblzma, libxcb | pillow | Permissive (libpng, zlib, libtiff, BSD, MIT, 0BSD) | Yes | Listed in the wheel's SBOM (`dist-info/sboms`) |
 | libimagequant | — | GPL-3.0+ | n/a | **Not present.** Pillow's SBOM mentions it as an optional component, but `PIL.features.check_feature("libimagequant")` is `False` in both the Linux image and the Windows development wheel |
+| FFmpeg (libavcodec, libavformat, libavutil, libswscale, libswresample) | opencv-python-headless | LGPL-2.1-or-later | Yes | Video I/O, never called by this project. Shared libraries in `opencv_python_headless.libs`, used unmodified and replaceable, which satisfies the LGPL. Licence text in the wheel's `LICENSE-3RD-PARTY.txt` |
+| libquadmath | opencv-python-headless | LGPL-2.1-or-later | Yes | GCC's quad-precision maths library, same terms as FFmpeg |
+| libgfortran | opencv-python-headless | GPL-3.0+ with the GCC Runtime Library Exception | Yes | The exception lets the runtime be combined with programs under any licence |
+| libvpx, libaom, dav1d, libavif, libpng, OpenBLAS | opencv-python-headless | BSD-3-Clause, BSD-2-Clause, libpng | Yes | Listed in the wheel's `LICENSE-3RD-PARTY.txt` and SBOM |
+| GEOS 3.14 | shapely | LGPL-2.1 | Yes | Geometry library, shared libraries in `shapely.libs`; same terms as FFmpeg |
+| OpenBLAS (scipy-openblas) | numpy | BSD-3-Clause | Yes | numpy documents the GCC runtime pieces linked into it in its bundled licence notes, under the same exception as above |
+
+### OCR models in the Docker image
+
+Fetched at build time into `/opt/ocr-models` (`backend/src/drive_text_extractor/ocr/rapid_models.py`),
+about 14 MB:
+
+| Model | Licence | Commercial use | Note |
+|---|---|---|---|
+| `ch_PP-OCRv5_det_mobile` (text detection) | Apache-2.0 | Yes | PaddleOCR model, converted to ONNX by RapidOCR |
+| `ch_PP-LCNet_x0_25_textline_ori_cls_mobile` (line orientation) | Apache-2.0 | Yes | Same |
+| `latin_PP-OCRv5_rec_mobile` (recognition, Latin scripts) | Apache-2.0 | Yes | Same |
+
+The weights are copyright Baidu and the PaddleOCR authors. RapidOCR's `MODEL_LICENSES.md`
+(shipped in the image, in the `rapidocr` dist-info) records their provenance and the attribution
+to keep when redistributing: *converted from an official PaddleOCR model to the ONNX format and
+packaged for use with RapidOCR; the upstream model weights are copyright Baidu and/or the
+applicable PaddleOCR rights holders and are licensed under the Apache License, Version 2.0.*
 
 ### System packages in the Docker image (Debian 13, `python:3.13-slim`)
 
@@ -133,12 +179,18 @@ BlueOak-1.0.0, CC0-1.0 and, for `lightningcss` only, MPL-2.0.
 | pdf2image | MIT, but requires Poppler | Poppler is GPL-2.0/3.0 and would be a required runtime dependency | Page rendering with pypdfium2 |
 | pdftotext / poppler-utils | GPL-2.0 | Same as above | pypdfium2 text layer |
 | OCRmyPDF | MPL-2.0, but requires Ghostscript | Ghostscript is AGPL-3.0 | Own scanned-page fallback: pypdfium2 rendering + Tesseract |
-| OpenCV (opencv-python) | Apache-2.0, but wheels bundle FFmpeg (LGPL) and, for the GUI build, Qt (LGPL) | Licence-compatible, but the bundled LGPL codecs add obligations for no real gain (only deskewing was needed) | Pillow preprocessing + Tesseract orientation detection |
+| OpenCV, GUI build (opencv-python) | Apache-2.0, but bundles Qt (LGPL) on top of FFmpeg | Not needed: RapidOCR only needs the headless build | `opencv-python-headless`, pulled in by RapidOCR |
+| RapidOCR's Arabic model | Apache-2.0, but needs `python-bidi` (LGPL-3.0) for right-to-left output | One more LGPL component for a path Tesseract already covers | Tesseract for images when Arabic is selected |
+
+OpenCV itself was first rejected too, when it would only have served for deskewing. It came in
+with RapidOCR, which needs it and brings a large accuracy gain on photos; only the headless build,
+without Qt, is installed.
 
 Considered for other reasons, licence-compatible: `pdfplumber` (MIT, redundant with pypdfium2),
-`EasyOCR` / `PaddleOCR` (Apache-2.0, heavy deep-learning stacks; a candidate for better Arabic
-OCR later), paid cloud OCR APIs (not open source or self-hostable; could be added as an optional
-`OcrEngine` implementation), `gdown` (MIT, scrapes Drive's web pages instead of using the API).
+`EasyOCR` (Apache-2.0, on PyTorch: far heavier than ONNX Runtime) and `PaddleOCR` itself
+(Apache-2.0, needs the PaddlePaddle runtime; RapidOCR runs the same models on ONNX Runtime),
+paid cloud OCR APIs (not open source or self-hostable; could be added as an optional `OcrEngine`
+implementation), `gdown` (MIT, scrapes Drive's web pages instead of using the API).
 
 ## How this list was produced
 
@@ -151,9 +203,11 @@ uv run python -c "import importlib.metadata as m; print(m.metadata('pypdfium2')[
 # Libraries bundled inside wheels, and the system packages, inside the built image
 docker build --target runtime -t drive-text-extractor .
 docker run --rm --entrypoint bash drive-text-extractor -c \
-  "ls /opt/venv/lib/python3.13/site-packages/pillow.libs; dpkg -l | grep -E 'tesseract|leptonica|fribidi'"
+  "cd /opt/venv/lib/python3.13/site-packages && ls pillow.libs opencv_python_headless.libs shapely.libs numpy.libs; dpkg -l | grep -E 'tesseract|leptonica|fribidi'"
 #   Pillow:    dist-info/sboms/*.cdx.json and PIL.features.check_feature(...)
 #   pypdfium2: dist-info/licenses/BUILD_LICENSES
+#   OpenCV:    opencv_python_headless-*.dist-info/LICENSE-3RD-PARTY.txt and sboms/
+#   Models:    rapidocr-*.dist-info/licenses/MODEL_LICENSES.md and rapidocr/default_models.yaml
 
 # npm packages: the "license" field of every entry in frontend/package-lock.json
 ```

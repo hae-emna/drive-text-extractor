@@ -5,7 +5,8 @@
 
 Paste a public Google Drive link (a whole folder or a single file), pick the PDFs and images,
 and get their text back. Each file goes through the right pipeline: a **PDF parser** for native PDFs, **OCR**
-for images and for scanned PDF pages. Results can be read per file and exported as JSON.
+for images and for scanned PDF pages. Photos and screenshots are read by a deep-learning OCR engine that
+finds text anywhere in the picture. Results can be read per file and exported as JSON.
 
 ![The full flow on the sample folder: 8 files listed and processed, 7 done and 1 failed, with Arabic text rendered right-to-left](docs/screenshot.png)
 
@@ -38,7 +39,7 @@ All five bonus items are covered:
 - **Scanned PDFs detected and OCR'd automatically.** The decision is made per page, so a typed document with a scanned annex is handled correctly.
 - **Asynchronous processing with live progress.** Background jobs with bounded concurrency; the page polls every second.
 - **Docker one-command setup.** `docker compose up --build`.
-- **Automated tests.** 237 backend tests (unit, contract, API, real Tesseract) and 46 frontend tests, plus an end-to-end smoke test of the Docker image in CI.
+- **Automated tests.** 283 backend tests (unit, contract, API, real Tesseract and RapidOCR) and 84 frontend tests, plus an end-to-end smoke test of the Docker image in CI.
 - **OCR language selection.** English, French and Arabic, combinable; Arabic text is displayed right-to-left.
 
 ## Quick start
@@ -105,7 +106,9 @@ cd frontend && npm run lint && npm run format:check && npm run typecheck && npm 
 docker build --target test -t dte-test . && docker run --rm dte-test    # backend suite with real Tesseract
 ```
 
-Tests that need Tesseract are marked `ocr` and skipped when it is not installed. Git hooks
+RapidOCR's models (about 14 MB) are downloaded on first use, into the installed package or into
+`OCR_MODELS_DIR` if set; the Docker image has them built in. Tests that need Tesseract are marked
+`ocr` and skipped when it is not installed. Git hooks
 (ruff, hygiene checks, Conventional Commits on messages): `pre-commit install`.
 
 ## Architecture
@@ -125,6 +128,7 @@ flowchart LR
     PDF -- "pages without<br/>a text layer" --> OCR{{"OcrEngine port"}}
     IMG --> OCR
     OCR --> TES["TesseractEngine<br/>pytesseract"]
+    OCR -- "images in English<br/>or French" --> RAP["RapidOcrEngine<br/>PP-OCRv5 on ONNX Runtime"]
 ```
 
 The backend is organised around three small ports (`domain/ports.py`). Services depend only on
@@ -136,7 +140,7 @@ backend/src/drive_text_extractor/
 ├── drive/         GoogleDriveSource: link parsing, listing, download, retries
 ├── local/         LocalFolderSource: the same port over a server folder (demo mode)
 ├── extractors/    PdfExtractor, ImageExtractor, text normalisation
-├── ocr/           TesseractEngine, image preparation
+├── ocr/           TesseractEngine, RapidOcrEngine, engine choice by language, line layout, image preparation
 ├── services/      ExtractorRouter, FolderBrowser, BatchRunner, JobService, InMemoryJobStore
 ├── api/           routes, request/response schemas, error envelope
 ├── config.py      every setting, read once from the environment
@@ -162,7 +166,7 @@ What happens to one file in a batch:
 1. **Download.** The size is refused up front when declared, and capped while streaming.
 2. **Route on content, not on the declared type.** `%PDF-` goes to the PDF extractor; PNG and JPEG signatures go to the image extractor; anything else is `unsupported_file`.
 3. **PDFs, page by page.** A page with at least `PDF_OCR_MIN_CHARS` visible characters in its text layer is parsed. Otherwise it is rendered in grayscale at 300 DPI and OCR'd.
-4. **Images.** EXIF orientation is applied, transparency flattened onto white, the image converted to grayscale with contrast stretched, and small images upscaled. Then Tesseract runs with orientation detection, so sideways scans are straightened first.
+4. **Images.** EXIF orientation is applied, transparency flattened onto white, the image converted to grayscale with contrast stretched, and small images upscaled. Tesseract's orientation detection straightens sideways scans. Then, when every selected language is English or French, **RapidOCR** reads the image: a text detector finds each line wherever it is (a sign, a caption, a timestamp), each line is read on its own, and the lines are put back in reading order, with a blank line between pieces of text that are far apart. With Arabic selected, Tesseract reads the image, as it does every scanned PDF page.
 5. **Record the outcome.** Text is normalised (NFKC, so the Arabic presentation forms found in PDFs become regular letters). Expected failures keep their error code; anything unexpected is logged and recorded as `internal_error`.
 
 ## Technical choices
@@ -171,12 +175,13 @@ What happens to one file in a batch:
 |---|---|---|---|
 | Backend | Python 3.13 + **FastAPI** | The PDF and OCR ecosystem is Python-first. FastAPI is async (Drive I/O, background jobs), typed end to end with Pydantic, and generates OpenAPI docs | Node.js: weaker PDF and OCR libraries |
 | PDF parser | **pypdfium2** (Apache-2.0 / BSD-3) | PDFium (Chrome's engine) is robust on real-world files. One library both reads the text layer and renders pages for OCR | PyMuPDF (AGPL-3.0), pdf2image + Poppler (GPL), pdfplumber (redundant) |
-| OCR | **Tesseract 5** via pytesseract (Apache-2.0) | Open source, self-hostable, ships French and Arabic models, gives per-word confidence. Behind `OcrEngine`, so it can be replaced | Cloud OCR (paid, not self-hosted); EasyOCR / PaddleOCR (heavy; candidates for Arabic, see next steps) |
-| Image preparation | **Pillow** only | EXIF rotation, transparency, contrast and upscaling cover common failures; orientation comes from Tesseract itself | OpenCV (wheels bundle LGPL codecs, for deskewing only) |
+| OCR, pages | **Tesseract 5** via pytesseract (Apache-2.0) | Open source, self-hostable, ships French and Arabic models, gives per-word confidence, and its layout analysis suits pages: scanned PDF pages, Arabic images, orientation detection | Cloud OCR (paid, not self-hosted) |
+| OCR, photos and screenshots | **RapidOCR** (Apache-2.0): PaddleOCR's PP-OCRv5 models on ONNX Runtime (MIT) | Tesseract segments a page into blocks before reading; on a photo or a screenshot it finds almost nothing (on a café screenshot: `21:09 4 all > GD`, at 83% confidence). A text detector finds every line wherever it is: the same screenshot gives `modern circle`, `Café and concept store`, `Spend the`, `with us`, `Modern Circle · a year ago`, `0:01 0:09`, at 96%. It also keeps the French accents Tesseract drops. About 1 s per image on a CPU | EasyOCR (PyTorch, far heavier); PaddleOCR itself (PaddlePaddle runtime); tuning Tesseract (sparse-text mode and upscaling recovered two of the lines, with more noise) |
+| Image preparation | **Pillow** | EXIF rotation, transparency, contrast and upscaling cover common failures; orientation comes from Tesseract itself | OpenCV for preprocessing (installed now as a RapidOCR dependency, but Pillow already does the job) |
 | Google Drive | **Drive API v3 + API key**, over httpx | Official, stable, returns name, type and size; no OAuth needed for public folders. The key stays on the server, in a header | Scraping Drive's web pages (fragile, against the terms of service) |
 | Async work | In-process background tasks + **polling** | The simplest thing that gives live per-file progress; parsing and OCR run in a thread pool with bounded concurrency | Celery / Redis (a production step, not POC scope); SSE (polling is enough at 1 s) |
 | Frontend | **React + TypeScript**, Vite, Tailwind | The page holds real state (selection, live statuses, results, errors), and typed components plus pure helpers keep it testable. It is also DI Xpertia's own stack | Plain JavaScript: harder to keep correct as the UI grew |
-| Packaging | **Docker** multi-stage, docker compose | Tesseract is a system binary, so Docker is the honest way to get "runs in one command". One origin serves the API and the page | |
+| Packaging | **Docker** multi-stage, docker compose | Tesseract is a system binary, so Docker is the honest way to get "runs in one command". The RapidOCR models are fetched at build time, so the container needs no network to read images. One origin serves the API and the page | |
 | Tooling | uv, ruff, mypy (strict), pytest; oxlint, Prettier, Vitest; pre-commit; GitHub Actions | Locked dependencies, the same checks locally and in CI, Conventional Commits enforced by a hook | |
 
 Licences of every dependency, and the alternatives rejected for licence reasons:
@@ -242,20 +247,23 @@ All settings are environment variables, documented in [`.env.example`](.env.exam
 | `MAX_IMAGE_MEGAPIXELS` | `50` | Decompression-bomb guard, checked before decoding |
 | `OCR_TIMEOUT_SECONDS` | `120` | Per image or page |
 | `OCR_AUTO_ROTATE` | `true` | Orientation detection before OCR |
+| `IMAGE_OCR_ENGINE` | `rapidocr` | `tesseract` to read images with Tesseract only |
+| `OCR_MODELS_DIR` | | Folder for RapidOCR's models; unset, they live in the installed package. Docker sets `/opt/ocr-models` |
 | `BATCH_CONCURRENCY` | `2` | Files processed at the same time |
-| `LOW_CONFIDENCE_THRESHOLD` | `60` | Below this mean word confidence, OCR output is flagged |
+| `LOW_CONFIDENCE_THRESHOLD` | `60` | Below this mean OCR confidence, output is flagged |
 | `LOG_LEVEL` | `INFO` | |
 
 ## Quality
 
 - **Tests.**
-  - Backend: 237, including contract tests for extractors, a fake Drive API served through `httpx.MockTransport`, API tests through the real routes, and real-Tesseract tests (rotation at 90/180/270°, a scanned PDF).
-  - Frontend: 46, including component tests and the full flow against a fake backend.
+  - Backend: 283, including contract tests for extractors, a fake Drive API served through `httpx.MockTransport`, API tests through the real routes, real-Tesseract tests (rotation at 90/180/270°, a scanned PDF) and real-RapidOCR tests (scattered captions on a dark picture, French accents, a sideways page).
+  - Frontend: 84, including component tests and the full flow against a fake backend.
   - Docker: the CI job starts the built image in demo mode and runs [`scripts/smoke_test.py`](scripts/smoke_test.py).
 - **Bugs found by the tests, kept as regression tests.**
   - PDFium is not thread-safe; parallel extraction crashed the process with a segfault in CI (#16).
   - Tesseract reports orientation clockwise while Pillow rotates counter-clockwise (#12).
   - Upscaling images already at scan resolution degraded OCR (#28).
+  - uv's download cache was left in the Docker image; it went unnoticed until the OCR dependencies made it 390 MB.
 - **Security.**
   - The API key travels in a header, never in a URL, and never reaches the browser.
   - The server never fetches the user's link: it builds Drive URLs from an id matching `[A-Za-z0-9_-]{10,}`.
@@ -267,7 +275,9 @@ All settings are environment variables, documented in [`.env.example`](.env.exam
 ## Known limits
 
 - **Arabic OCR is the weakest path.** Tesseract's Arabic line detection is unreliable: depending on font and size it can skip whole lines while still reporting high confidence on the lines it reads. The sample `avis-arabe.png` loses its title line. The confidence flag does not catch missing lines.
-- **Accents.** French accents are sometimes lost in OCR (`à` → `a`), even with the French pack selected.
+- **Accents.** Tesseract sometimes loses French accents (`à` → `a`). RapidOCR keeps them, but it only reads images; scanned PDF pages still go through Tesseract.
+- **Arabic switches images back to Tesseract.** RapidOCR's Arabic model needs a right-to-left dependency (`python-bidi`, LGPL) that was not added, so selecting Arabic sends images to Tesseract, with its weaker results on photos.
+- **Confidence measures what was found, not what was missed.** It is the engine's certainty about the text it read; text it did not detect at all does not lower it. The page says so next to the score.
 - **Jobs live in memory.** They are lost on restart, the app runs as a single process, and finished jobs are evicted after 100.
 - **No authentication or rate limiting.** Anyone who can reach the server can use its Drive API quota.
 - **Polling, not push.** Each poll returns the whole job, texts included, which is fine for tens of files but wasteful for hundreds.
@@ -277,15 +287,15 @@ All settings are environment variables, documented in [`.env.example`](.env.exam
 - **Not supported yet.**
   - Google Docs, Sheets and Slides are skipped instead of exported to PDF.
   - Folder shortcuts are not followed.
-- **OCR quality depends on the scan.** Very low-resolution photos, handwriting and complex backgrounds give poor results; the confidence score says so.
-- **Image size.** The Docker image is about 520 MB, mostly Python and Tesseract with its language data.
+- **OCR quality depends on the picture.** Handwriting and decorative script fonts are mostly missed (on the café screenshot, the script "Spend the day" comes out as `Spend the`), and icons are sometimes read as letters (`X`, `II`).
+- **Image size.** The Docker image is about 1 GB. Most of the growth from RapidOCR comes from OpenCV (with video codecs it never uses here), ONNX Runtime and NumPy; the models themselves are 14 MB.
 
 ## Next steps
 
 Towards production, roughly in order of value:
 
 1. **Queue and storage.** Move jobs to Redis (or a database) with separate workers (RQ / Celery) so processing scales and survives restarts. `InMemoryJobStore` and `BatchRunner` are already separated for this.
-2. **Better Arabic OCR.** Build a small labelled evaluation set, then compare Tesseract's `tessdata_best` models, EasyOCR and PaddleOCR behind the `OcrEngine` port, selected per language.
+2. **Better Arabic OCR, and RapidOCR for scanned pages.** Build a small labelled evaluation set, then compare Tesseract's `tessdata_best` models with RapidOCR's Arabic model (and its `python-bidi` dependency), and RapidOCR with Tesseract on scanned PDF pages, behind the `OcrEngine` port.
 3. **Result cache** keyed by file id + modified time + languages + pipeline version, so re-runs are instant.
 4. **Push progress.** Use server-sent events or a WebSocket instead of polling, sending only changed files.
 5. **Authentication and per-user quotas**, structured logs and metrics (per-file duration, OCR confidence distribution).
