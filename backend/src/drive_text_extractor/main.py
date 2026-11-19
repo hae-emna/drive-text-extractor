@@ -20,6 +20,7 @@ from drive_text_extractor.domain.ports import FileSource, OcrEngine
 from drive_text_extractor.drive.client import GoogleDriveSource
 from drive_text_extractor.extractors.image import ImageExtractor
 from drive_text_extractor.extractors.pdf import PdfExtractor
+from drive_text_extractor.local.source import LocalFolderSource
 from drive_text_extractor.ocr.tesseract import TesseractEngine
 from drive_text_extractor.services.batch_runner import BatchRunner
 from drive_text_extractor.services.folder_browser import FolderBrowser
@@ -111,7 +112,15 @@ def _file_source(
     settings: Settings, http: httpx.AsyncClient, override: FileSource | None
 ) -> tuple[FileSource, SourceType]:
     if override is not None:
-        return override, "google_drive"
+        return override, settings.file_source
+    if settings.file_source == "local":
+        logger.info("Demo mode: reading folders under %s", settings.local_folder.resolve())
+        local = LocalFolderSource(
+            settings.local_folder,
+            max_file_bytes=settings.max_file_bytes,
+            max_items=settings.max_listed_files,
+        )
+        return local, "local"
     api_key = settings.google_api_key.get_secret_value() if settings.google_api_key else None
     if api_key is None:
         logger.warning("GOOGLE_API_KEY is not set: listing Drive folders will fail")
