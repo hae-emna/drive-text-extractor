@@ -33,7 +33,7 @@ class TesseractEngine:
     def recognize(self, image: Image, languages: Sequence[str]) -> OcrOutput:
         lang = "+".join(languages)
         if self._auto_rotate:
-            image = self._upright(image)
+            image = self.upright(image)
         try:
             # One Tesseract run produces both the plain text and the per-word TSV.
             text, tsv = pytesseract.run_and_get_multiple_output(
@@ -50,8 +50,11 @@ class TesseractEngine:
             raise OcrError() from exc
         return OcrOutput(text=normalize_text(text), confidence=mean_word_confidence(tsv))
 
-    def _upright(self, image: Image) -> Image:
-        """Rotate sideways or upside-down scans using Tesseract's orientation detection."""
+    def upright(self, image: Image) -> Image:
+        """Rotate sideways or upside-down scans using Tesseract's orientation detection.
+
+        Public because the image OCR engine straightens its input the same way.
+        """
         try:
             osd = pytesseract.image_to_osd(
                 image, output_type=pytesseract.Output.DICT, timeout=self._timeout
