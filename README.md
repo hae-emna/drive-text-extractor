@@ -3,8 +3,8 @@
 [![CI](https://github.com/hae-emna/drive-text-extractor/actions/workflows/ci.yml/badge.svg)](https://github.com/hae-emna/drive-text-extractor/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 
-Paste a public Google Drive folder link, pick the PDFs and images it contains, and get their
-text back. Each file goes through the right pipeline: a **PDF parser** for native PDFs, **OCR**
+Paste a public Google Drive link (a whole folder or a single file), pick the PDFs and images,
+and get their text back. Each file goes through the right pipeline: a **PDF parser** for native PDFs, **OCR**
 for images and for scanned PDF pages. Results can be read per file and exported as JSON.
 
 ![The full flow on the sample folder: 8 files listed and processed, 7 done and 1 failed, with Arabic text rendered right-to-left](docs/screenshot.png)
@@ -27,8 +27,8 @@ for images and for scanned PDF pages. Results can be read per file and exported 
 
 | Step | In the app |
 |---|---|
-| 01 Paste a public Drive link | Accepts every common folder link format. Invalid, private and file links get a specific message. |
-| 02 List the documents | Shows PDFs, PNG and JPEG files with name, type and size, optionally from subfolders. Everything else is listed as *skipped*, with a reason. |
+| 01 Paste a public Drive link | Accepts folder links and single-file links in every common format (`/drive/folders/…`, `/file/d/…/view`, `open?id=`, `uc?id=`, download links). Invalid and private links, and Google Docs links, get a specific message. |
+| 02 List the documents | Shows PDFs, PNG and JPEG files with name, type and size, optionally from subfolders. Everything else is listed as *skipped*, with a reason. A single-file link lists that file and selects it. |
 | 03 Select files | Per-file checkboxes, **Select all** (with a partial state); the selection count stays visible. |
 | 04 Run the batch | One job for the selection. Each file shows `pending`, `processing`, `done` or `failed`, live; a failing file never stops the others. The job can be cancelled. |
 | 05 Read the results | Text per file with the method used (`PDF parser`, `OCR`, or both for mixed PDFs), OCR confidence with a warning when low, and **Export JSON**. |
@@ -57,10 +57,11 @@ You need Docker. The app runs on <http://localhost:8000>.
    cp .env.example .env          # then set GOOGLE_API_KEY=... in .env
    docker compose up --build
    ```
-3. Share a Drive folder as **"Anyone with the link"** and paste its link. To try every path of
-   the pipeline, upload the files from [`samples/input`](samples/input) to that folder.
+3. Share a Drive folder or a single file as **"Anyone with the link"** and paste its link. To
+   try every path of the pipeline, upload the files from [`samples/input`](samples/input) to a
+   folder.
 
-No OAuth is involved: only public folders are in scope, so an API key is enough.
+No OAuth is involved: only public folders and files are in scope, so an API key is enough.
 
 ### Without an API key (demo mode)
 
@@ -68,8 +69,9 @@ No OAuth is involved: only public folders are in scope, so an API key is enough.
 FILE_SOURCE=local docker compose up --build      # PowerShell: $env:FILE_SOURCE="local"; docker compose up --build
 ```
 
-Type `local:` as the folder link. The server reads [`samples/input`](samples/input), a folder in
-which each file exercises one path of the pipeline (see [its README](samples/README.md)).
+Type `local:` as the link (or `local:report-mixed.pdf` for a single file). The server reads
+[`samples/input`](samples/input), a folder in which each file exercises one path of the pipeline
+(see [its README](samples/README.md)).
 [`samples/output-demo.json`](samples/output-demo.json) is the export of that run.
 
 ## Local development
@@ -153,7 +155,7 @@ How SOLID shows up, without frameworks or abstract factories:
 - **Open/closed.** An extractor declares the media types it handles and recognises its own content. A new format is a new class plus one line in `main.py`; `test_router_extension.py` proves it with a WebP extractor.
 - **Liskov.** `test_contract.py` runs the same suite against every extractor: same result shape, non-overlapping detection, only `ExtractionError` on bad input.
 - **Interface segregation.** Three small protocols (`FileSource`, `Extractor`, `OcrEngine`) rather than one service interface.
-- **Dependency inversion.** Services receive ports. `LocalFolderSource` was added without touching any service, and tests swap in fakes with no network and no OCR binary.
+- **Dependency inversion.** Services receive ports. `LocalFolderSource` was added without touching any service, and single-file links only changed the two sources. Tests swap in fakes with no network and no OCR binary.
 
 What happens to one file in a batch:
 
@@ -185,14 +187,14 @@ Licences of every dependency, and the alternatives rejected for licence reasons:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/health` | Version, source type, OCR languages and whether each pack is installed |
-| POST | `/api/folders/list` | `{link, recursive}` → supported files and skipped files with reasons |
+| POST | `/api/files/list` | `{link, recursive}` → `kind` (`folder` or `file`), the supported files, and skipped files with reasons |
 | POST | `/api/jobs` | `{link, file_ids, languages, recursive}` → `202` and a job snapshot |
 | GET | `/api/jobs/{id}` | Per-file status, method, per-page text, confidence, error |
 | POST | `/api/jobs/{id}/cancel` | Skip the files that have not started yet |
 | GET | `/api/jobs/{id}/export` | Versioned JSON export, downloaded as a file |
 
 Errors always have the same shape, `{"error": {"code": "folder_not_found", "message": "..."}}`,
-with codes such as `invalid_link`, `folder_not_found`, `rate_limited`, `file_too_large`,
+with codes such as `invalid_link`, `folder_not_found`, `file_not_accessible`, `rate_limited`, `file_too_large`,
 `corrupt_file`, `encrypted_file` and `ocr_timeout`. The server re-lists the folder before
 starting a job, so only files that really belong to it can be processed.
 
@@ -218,8 +220,9 @@ scanned page:
 }
 ```
 
-The export wraps the files with `schema_version`, `job_id`, timestamps, `languages`, the
-`source` (type, link, folder) and a `summary` of counts per status.
+The export wraps the files with `schema_version` (currently `1.1`), `job_id`, timestamps,
+`languages`, the `source` (type, `kind` of link, link, folder or file) and a `summary` of counts
+per status. Additive changes bump the minor version.
 
 ## Configuration
 
@@ -274,7 +277,7 @@ All settings are environment variables, documented in [`.env.example`](.env.exam
 - **Not supported yet.**
   - Google Docs, Sheets and Slides are skipped instead of exported to PDF.
   - Folder shortcuts are not followed.
-  - Pre-2021 `resourcekey` links work for the root folder only.
+  - Pre-2021 `resourcekey` links work for the linked folder or file only, not for items inside a folder.
 - **OCR quality depends on the scan.** Very low-resolution photos, handwriting and complex backgrounds give poor results; the confidence score says so.
 - **Image size.** The Docker image is about 520 MB, mostly Python and Tesseract with its language data.
 
