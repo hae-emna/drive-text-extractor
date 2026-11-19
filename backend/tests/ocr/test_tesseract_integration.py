@@ -34,6 +34,22 @@ def test_recognises_printed_text_with_high_confidence() -> None:
     assert output.confidence > 60
 
 
+@pytest.mark.parametrize("angle", [90, 180, 270])
+def test_straightens_rotated_scans(angle: int) -> None:
+    lines = [
+        "Orientation detection needs a few lines of text",
+        "so this paragraph is long enough for Tesseract",
+        "Invoice number 2026-001 total amount 120 TND",
+        "Thank you for your business and see you soon",
+    ]
+    rotated = render_text(lines).rotate(angle, expand=True, fillcolor=255)
+
+    output = TesseractEngine(auto_rotate=True).recognize(rotated, ["eng"])
+
+    assert "Invoice" in output.text
+    assert "Tesseract" in output.text
+
+
 def test_combines_language_packs() -> None:
     image = render_text(["Facture de Tunis", "Invoice from Tunis"])
 

@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     ocr_timeout_seconds: int = Field(default=120, ge=5)
     """Tesseract is stopped if one image or page takes longer than this."""
 
+    ocr_auto_rotate: bool = True
+    """Detect and fix sideways or upside-down scans before OCR (costs one extra Tesseract pass)."""
+
     @property
     def max_file_bytes(self) -> int:
         return self.max_file_size_mb * 1_000_000

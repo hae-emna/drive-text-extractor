@@ -21,12 +21,19 @@ from drive_text_extractor.extractors.text import normalize_text
 logger = logging.getLogger(__name__)
 
 
+_MIN_ORIENTATION_CONFIDENCE = 2.0
+"""Below this, Tesseract's orientation guess is noise (its own docs suggest ~2 as a floor)."""
+
+
 class TesseractEngine:
-    def __init__(self, *, timeout_seconds: int = 120) -> None:
+    def __init__(self, *, timeout_seconds: int = 120, auto_rotate: bool = True) -> None:
         self._timeout = timeout_seconds
+        self._auto_rotate = auto_rotate
 
     def recognize(self, image: Image, languages: Sequence[str]) -> OcrOutput:
         lang = "+".join(languages)
+        if self._auto_rotate:
+            image = self._upright(image)
         try:
             # One Tesseract run produces both the plain text and the per-word TSV.
             text, tsv = pytesseract.run_and_get_multiple_output(
@@ -42,6 +49,23 @@ class TesseractEngine:
                 raise OcrTimeoutError() from exc
             raise OcrError() from exc
         return OcrOutput(text=normalize_text(text), confidence=mean_word_confidence(tsv))
+
+    def _upright(self, image: Image) -> Image:
+        """Rotate sideways or upside-down scans using Tesseract's orientation detection."""
+        try:
+            osd = pytesseract.image_to_osd(
+                image, output_type=pytesseract.Output.DICT, timeout=self._timeout
+            )
+        except (pytesseract.TesseractError, pytesseract.TesseractNotFoundError, RuntimeError):
+            # Too little text to decide, or detection failed: recognise the image as it is
+            # (a missing binary is reported by the recognition call itself).
+            return image
+        angle = int(osd.get("rotate", 0))
+        if angle == 0 or float(osd.get("orientation_conf", 0)) < _MIN_ORIENTATION_CONFIDENCE:
+            return image
+        logger.debug("Rotating image by %s degrees before OCR", angle)
+        # OSD reports a clockwise correction; Pillow rotates counter-clockwise.
+        return image.rotate(-angle, expand=True, fillcolor=255)
 
     @staticmethod
     def available_languages() -> list[str]:

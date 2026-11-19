@@ -59,7 +59,7 @@ def test_returns_normalised_text_and_confidence(
 
     monkeypatch.setattr(tesseract_module.pytesseract, "run_and_get_multiple_output", run)
 
-    output = TesseractEngine(timeout_seconds=7).recognize(image, ["fra", "eng"])
+    output = TesseractEngine(timeout_seconds=7, auto_rotate=False).recognize(image, ["fra", "eng"])
 
     assert output.text == "Total\n120 TND"
     assert output.confidence == 85.0
@@ -70,7 +70,7 @@ def test_missing_binary_is_explained(monkeypatch: pytest.MonkeyPatch, image: Ima
     fail_with(monkeypatch, pytesseract.TesseractNotFoundError())
 
     with pytest.raises(OcrError, match="not installed"):
-        TesseractEngine().recognize(image, ["eng"])
+        TesseractEngine(auto_rotate=False).recognize(image, ["eng"])
 
 
 def test_missing_language_pack_is_explained(
@@ -79,7 +79,7 @@ def test_missing_language_pack_is_explained(
     fail_with(monkeypatch, pytesseract.TesseractError(1, "Failed loading language 'ara'"))
 
     with pytest.raises(OcrError, match="'ara' is not installed"):
-        TesseractEngine().recognize(image, ["ara"])
+        TesseractEngine(auto_rotate=False).recognize(image, ["ara"])
 
 
 def test_timeout_has_its_own_error(monkeypatch: pytest.MonkeyPatch, image: Image.Image) -> None:
@@ -87,3 +87,42 @@ def test_timeout_has_its_own_error(monkeypatch: pytest.MonkeyPatch, image: Image
 
     with pytest.raises(OcrTimeoutError):
         TesseractEngine().recognize(image, ["eng"])
+
+
+def osd_says(monkeypatch: pytest.MonkeyPatch, result: dict[str, Any] | Exception) -> None:
+    def detect(*_: Any, **__: Any) -> dict[str, Any]:
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    monkeypatch.setattr(tesseract_module.pytesseract, "image_to_osd", detect)
+
+
+def recognised_size(monkeypatch: pytest.MonkeyPatch, image: Image.Image) -> tuple[int, int]:
+    seen: list[tuple[int, int]] = []
+
+    def run(img: Image.Image, **_: Any) -> list[str]:
+        seen.append(img.size)
+        return ["", ""]
+
+    monkeypatch.setattr(tesseract_module.pytesseract, "run_and_get_multiple_output", run)
+    TesseractEngine(auto_rotate=True).recognize(image, ["eng"])
+    return seen[0]
+
+
+def test_rotates_when_orientation_is_confident(monkeypatch: pytest.MonkeyPatch) -> None:
+    osd_says(monkeypatch, {"rotate": 90, "orientation_conf": 12.5})
+
+    assert recognised_size(monkeypatch, Image.new("L", (40, 10), 255)) == (10, 40)
+
+
+def test_keeps_image_when_orientation_is_uncertain(monkeypatch: pytest.MonkeyPatch) -> None:
+    osd_says(monkeypatch, {"rotate": 90, "orientation_conf": 0.4})
+
+    assert recognised_size(monkeypatch, Image.new("L", (40, 10), 255)) == (40, 10)
+
+
+def test_keeps_image_when_detection_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    osd_says(monkeypatch, pytesseract.TesseractError(1, "Too few characters"))
+
+    assert recognised_size(monkeypatch, Image.new("L", (40, 10), 255)) == (40, 10)
