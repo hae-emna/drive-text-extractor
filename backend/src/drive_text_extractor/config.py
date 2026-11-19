@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     max_pdf_pages: int = Field(default=200, ge=1)
     """PDFs with more pages are refused, to bound processing time per file."""
 
+    pdf_ocr_min_chars: int = Field(default=20, ge=0)
+    """PDF pages whose text layer has fewer visible characters are treated as scans and OCR'd."""
+
+    pdf_render_dpi: int = Field(default=300, ge=72, le=600)
+    """Resolution at which scanned PDF pages are rendered for OCR."""
+
     max_image_megapixels: int = Field(default=50, ge=1)
     """Images above this size are refused before decoding (decompression-bomb guard)."""
 
