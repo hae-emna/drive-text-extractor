@@ -236,3 +236,32 @@ async def test_persistent_outage_is_reported_as_unavailable(
 
     with pytest.raises(SourceUnavailableError):
         await make_source(drive, sleep).list_files(LINK)
+
+
+async def test_a_refused_key_is_not_reported_as_a_missing_folder(
+    drive: FakeDrive, sleep: SleepRecorder
+) -> None:
+    # Body captured from Google when the key itself is refused, even for public files.
+    refused = httpx.Response(
+        403,
+        json={
+            "error": {
+                "code": 403,
+                "message": "Permission denied on the service.",
+                "errors": [{"message": "Permission denied on the service.", "reason": "forbidden"}],
+                "status": "PERMISSION_DENIED",
+                "details": [
+                    {
+                        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+                        "reason": "ACCESS_DENIED",
+                        "domain": "googleapis.com",
+                        "metadata": {"service": "drive.googleapis.com"},
+                    }
+                ],
+            }
+        },
+    )
+    drive.then_respond(refused)
+
+    with pytest.raises(SourceNotConfiguredError, match="Google refused this API key"):
+        await make_source(drive, sleep).list_files(LINK)
