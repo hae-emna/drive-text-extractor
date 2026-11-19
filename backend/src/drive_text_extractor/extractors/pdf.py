@@ -1,6 +1,7 @@
 """PDF extractor built on pypdfium2 (PDFium bindings, Apache-2.0 / BSD-3-Clause)."""
 
 import math
+import threading
 
 import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
@@ -26,6 +27,11 @@ _SIGNATURE_WINDOW = 1024
 
 
 _POINTS_PER_INCH = 72
+
+_PDFIUM_LOCK = threading.Lock()
+"""PDFium is not thread-safe: no two threads may call into it at the same time, even on
+different documents. Every PDFium call goes through this lock; OCR runs outside it, so scanned
+pages from several files are still recognised in parallel."""
 
 
 class PdfExtractor:
@@ -56,36 +62,51 @@ class PdfExtractor:
         return PDF_SIGNATURE in head[:_SIGNATURE_WINDOW]
 
     def extract(self, data: bytes, options: ExtractionOptions) -> ExtractionResult:
-        document = _open(data)
+        with _PDFIUM_LOCK:
+            document = _open(data)
+            try:
+                page_count = self._checked_page_count(document)
+            except Exception:
+                document.close()
+                raise
         try:
-            page_count = len(document)
-            if page_count == 0:
-                raise CorruptFileError("This PDF has no pages.")
-            if page_count > self._max_pages:
-                raise TooManyPagesError(
-                    f"This PDF has {page_count} pages; the limit is {self._max_pages}."
-                )
             pages = tuple(self._read_page(document, index, options) for index in range(page_count))
         finally:
-            document.close()
+            with _PDFIUM_LOCK:
+                document.close()
         return ExtractionResult(pages=pages)
+
+    def _checked_page_count(self, document: pdfium.PdfDocument) -> int:
+        page_count = len(document)
+        if page_count == 0:
+            raise CorruptFileError("This PDF has no pages.")
+        if page_count > self._max_pages:
+            raise TooManyPagesError(
+                f"This PDF has {page_count} pages; the limit is {self._max_pages}."
+            )
+        return page_count
 
     def _read_page(
         self, document: pdfium.PdfDocument, index: int, options: ExtractionOptions
     ) -> PageText:
         number = index + 1
         ocr = self._ocr
-        try:
-            page = document[index]
+        with _PDFIUM_LOCK:
             try:
-                text = normalize_text(_text_layer(page))
-                if ocr is None or _visible_chars(text) >= self._min_text_chars:
-                    return PageText(number=number, method=ExtractionMethod.PDF_PARSER, text=text)
-                image = self._render(page)
-            finally:
-                page.close()
-        except pdfium.PdfiumError as exc:
-            raise CorruptFileError(f"Page {number} of this PDF is damaged.") from exc
+                page = document[index]
+                try:
+                    text = normalize_text(_text_layer(page))
+                    if ocr is None or _visible_chars(text) >= self._min_text_chars:
+                        return PageText(
+                            number=number, method=ExtractionMethod.PDF_PARSER, text=text
+                        )
+                    image = self._render(page)
+                finally:
+                    page.close()
+            except pdfium.PdfiumError as exc:
+                raise CorruptFileError(f"Page {number} of this PDF is damaged.") from exc
+
+        # Outside the lock: Tesseract runs in its own process and does not touch PDFium.
 
         output = ocr.recognize(image, options.languages)
         if not output.text and text:
