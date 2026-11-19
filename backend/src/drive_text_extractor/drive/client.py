@@ -25,7 +25,11 @@ API_ROOT = "https://www.googleapis.com/drive/v3"
 FOLDER_MIME = "application/vnd.google-apps.folder"
 SHORTCUT_MIME = "application/vnd.google-apps.shortcut"
 
-_ITEM_FIELDS = "id,name,mimeType,size,modifiedTime,shortcutDetails(targetId,targetMimeType)"
+_ITEM_FIELDS = (
+    "id,name,mimeType,size,modifiedTime,resourceKey,"
+    "shortcutDetails(targetId,targetMimeType,targetResourceKey)"
+)
+_MAX_REMEMBERED_KEYS = 10_000
 _RATE_LIMIT_REASONS = {"rateLimitExceeded", "userRateLimitExceeded", "RATE_LIMIT_EXCEEDED"}
 _CONFIG_MESSAGES = {
     "API_KEY_INVALID": "The Google Drive API key is invalid. Check GOOGLE_API_KEY.",
@@ -60,6 +64,14 @@ class RetryPolicy:
 
 
 class GoogleDriveSource:
+    """Lists and downloads public Drive folders and files with an API key.
+
+    Items shared by link before 2021 need their resource key on every request. The key of the
+    linked item comes from the link; the keys of items inside a folder come from the listing and
+    are remembered here. Jobs always list the link again before downloading, so the keys are
+    known by the time a file is downloaded.
+    """
+
     def __init__(
         self,
         http: httpx.AsyncClient,
@@ -78,34 +90,34 @@ class GoogleDriveSource:
         self._page_size = page_size
         self._retry = retry or RetryPolicy()
         self._sleep = sleep
+        self._resource_keys: dict[str, str] = {}
 
     async def list_files(self, link: str, *, recursive: bool = False) -> FolderListing:
         ref = parse_drive_link(link)
-        headers = _resource_key_header(ref)
+        self._remember_key(ref.id, ref.resource_key)
         not_found = FileNotAccessibleError if ref.kind is LinkKind.FILE else FolderNotFoundError
         item = await self._get_json(
             f"{API_ROOT}/files/{ref.id}",
             {"fields": f"{_ITEM_FIELDS},trashed", "supportsAllDrives": "true"},
-            headers,
+            self._key_header(ref.id),
             not_found=not_found,
         )
         if item.get("trashed"):
             raise not_found()
         # The URL only hints at what the id is; Drive's answer decides.
         if item.get("mimeType") == FOLDER_MIME:
-            return await self._list_folder(ref, item, headers, recursive=recursive)
-        return _single_file_listing(item)
+            return await self._list_folder(ref, item, recursive=recursive)
+        return self._single_file_listing(item)
 
-    async def _list_folder(
-        self, ref: DriveLink, folder: Json, headers: dict[str, str], *, recursive: bool
-    ) -> FolderListing:
+    async def _list_folder(self, ref: DriveLink, folder: Json, *, recursive: bool) -> FolderListing:
         files: list[SourceFile] = []
         skipped: list[SkippedFile] = []
         pending = deque([(ref.id, "")])
         visited = {ref.id}
         while pending:
             folder_id, prefix = pending.popleft()
-            async for item in self._children(folder_id, headers):
+            async for item in self._children(folder_id):
+                self._remember_key(item["id"], item.get("resourceKey"))
                 path = prefix + item["name"]
                 mime_type = item["mimeType"]
                 if mime_type == FOLDER_MIME:
@@ -122,7 +134,7 @@ class GoogleDriveSource:
                         pending.append((item["id"], path + "/"))
                     continue
                 if mime_type == SHORTCUT_MIME:
-                    target = _resolve_shortcut(item)
+                    target = self._resolve_shortcut(item)
                     if target is None:
                         skipped.append(
                             SkippedFile(path, mime_type, "Shortcut to a folder is not followed.")
@@ -144,7 +156,7 @@ class GoogleDriveSource:
         response = await self._send(
             f"{API_ROOT}/files/{file.id}",
             {"alt": "media", "supportsAllDrives": "true"},
-            {},
+            self._key_header(file.id),
             not_found=FileNotAccessibleError,
             stream=True,
         )
@@ -160,7 +172,7 @@ class GoogleDriveSource:
             await response.aclose()
         return bytes(received)
 
-    async def _children(self, folder_id: str, headers: dict[str, str]) -> AsyncIterator[Json]:
+    async def _children(self, folder_id: str) -> AsyncIterator[Json]:
         # folder_id matched a strict [A-Za-z0-9_-] pattern, so it is safe inside the query.
         params = {
             "q": f"'{folder_id}' in parents and trashed = false",
@@ -172,7 +184,10 @@ class GoogleDriveSource:
         }
         while True:
             page = await self._get_json(
-                f"{API_ROOT}/files", params, headers, not_found=FolderNotFoundError
+                f"{API_ROOT}/files",
+                params,
+                self._key_header(folder_id),
+                not_found=FolderNotFoundError,
             )
             for item in page.get("files", []):
                 yield item
@@ -180,6 +195,43 @@ class GoogleDriveSource:
             if not token:
                 return
             params = {**params, "pageToken": token}
+
+    def _remember_key(self, item_id: str, resource_key: str | None) -> None:
+        if not resource_key:
+            return
+        if len(self._resource_keys) >= _MAX_REMEMBERED_KEYS:
+            self._resource_keys.clear()
+        self._resource_keys[item_id] = resource_key
+
+    def _key_header(self, item_id: str) -> dict[str, str]:
+        key = self._resource_keys.get(item_id)
+        return {"X-Goog-Drive-Resource-Keys": f"{item_id}/{key}"} if key else {}
+
+    def _resolve_shortcut(self, item: Json) -> Json | None:
+        details = item.get("shortcutDetails") or {}
+        target_id = details.get("targetId")
+        target_mime = details.get("targetMimeType")
+        if not target_id or not target_mime or target_mime == FOLDER_MIME:
+            return None
+        self._remember_key(target_id, details.get("targetResourceKey"))
+        # The shortcut's own size/modifiedTime describe the shortcut, not the target.
+        return {"id": target_id, "name": item["name"], "mimeType": target_mime}
+
+    def _single_file_listing(self, item: Json) -> FolderListing:
+        if item.get("mimeType") == SHORTCUT_MIME:
+            target = self._resolve_shortcut(item)
+            if target is None:
+                raise InvalidLinkError(
+                    "This is a shortcut to a folder. Open the folder and paste its own link."
+                )
+            item = target
+        file = _to_source_file(item, "")
+        return FolderListing(
+            folder_id=file.id,
+            folder_name=file.name,
+            files=(file,),
+            kind=LinkKind.FILE,
+        )
 
     async def _get_json(
         self,
@@ -261,39 +313,6 @@ def _error_reasons(response: httpx.Response) -> set[str]:
 def _retry_after(response: httpx.Response) -> float | None:
     value = response.headers.get("Retry-After", "")
     return float(value) if value.isdigit() else None
-
-
-def _resource_key_header(ref: DriveLink) -> dict[str, str]:
-    if ref.resource_key is None:
-        return {}
-    return {"X-Goog-Drive-Resource-Keys": f"{ref.id}/{ref.resource_key}"}
-
-
-def _resolve_shortcut(item: Json) -> Json | None:
-    details = item.get("shortcutDetails") or {}
-    target_id = details.get("targetId")
-    target_mime = details.get("targetMimeType")
-    if not target_id or not target_mime or target_mime == FOLDER_MIME:
-        return None
-    # The shortcut's own size/modifiedTime describe the shortcut, not the target.
-    return {"id": target_id, "name": item["name"], "mimeType": target_mime}
-
-
-def _single_file_listing(item: Json) -> FolderListing:
-    if item.get("mimeType") == SHORTCUT_MIME:
-        target = _resolve_shortcut(item)
-        if target is None:
-            raise InvalidLinkError(
-                "This is a shortcut to a folder. Open the folder and paste its own link."
-            )
-        item = target
-    file = _to_source_file(item, "")
-    return FolderListing(
-        folder_id=file.id,
-        folder_name=file.name,
-        files=(file,),
-        kind=LinkKind.FILE,
-    )
 
 
 def _to_source_file(item: Json, path: str) -> SourceFile:

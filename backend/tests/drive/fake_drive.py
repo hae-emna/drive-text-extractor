@@ -24,6 +24,8 @@ class Item:
     report_size: bool = True
     shortcut_target: tuple[str, str] | None = None
     trashed: bool = False
+    resource_key: str | None = None
+    """Legacy items (shared by link before 2021) are only readable with this key."""
 
 
 def drive_error(status: int, reason: str, headers: dict[str, str] | None = None) -> httpx.Response:
@@ -39,8 +41,10 @@ class FakeDrive:
 
     # --- arranging ---------------------------------------------------------------------
 
-    def add_folder(self, id: str, name: str, parent: str | None = None) -> None:
-        self.items[id] = Item(id, name, FOLDER, parent)
+    def add_folder(
+        self, id: str, name: str, parent: str | None = None, *, resource_key: str | None = None
+    ) -> None:
+        self.items[id] = Item(id, name, FOLDER, parent, resource_key=resource_key)
 
     def add_file(
         self,
@@ -51,8 +55,11 @@ class FakeDrive:
         content: bytes = b"content",
         *,
         report_size: bool = True,
+        resource_key: str | None = None,
     ) -> None:
-        self.items[id] = Item(id, name, mime_type, parent, content, report_size)
+        self.items[id] = Item(
+            id, name, mime_type, parent, content, report_size, resource_key=resource_key
+        )
 
     def add_shortcut(
         self, id: str, name: str, parent: str, target_id: str, target_mime: str
@@ -81,7 +88,7 @@ class FakeDrive:
             return self._list(request)
         match = re.fullmatch(r"/drive/v3/files/([^/]+)", request.url.path)
         item = self.items.get(match.group(1)) if match else None
-        if item is None:
+        if item is None or not self._key_given(request, item):
             return drive_error(404, "notFound")
         if request.url.params.get("alt") == "media":
             return httpx.Response(200, content=item.content)
@@ -90,6 +97,9 @@ class FakeDrive:
     def _list(self, request: httpx.Request) -> httpx.Response:
         match = re.match(r"'([^']+)' in parents", request.url.params["q"])
         assert match, "the client must always filter by parent"
+        parent = self.items.get(match.group(1))
+        if parent is None or not self._key_given(request, parent):
+            return drive_error(404, "notFound")
         children = sorted(
             (item for item in self.items.values() if item.parent == match.group(1)),
             key=lambda item: (item.mime_type != FOLDER, item.name),
@@ -104,6 +114,13 @@ class FakeDrive:
         return httpx.Response(200, json=body)
 
     @staticmethod
+    def _key_given(request: httpx.Request, item: Item) -> bool:
+        if item.resource_key is None:
+            return True
+        given = request.headers.get("X-Goog-Drive-Resource-Keys", "").split(",")
+        return f"{item.id}/{item.resource_key}" in given
+
+    @staticmethod
     def _resource(item: Item) -> dict[str, object]:
         resource: dict[str, object] = {
             "id": item.id,
@@ -115,6 +132,8 @@ class FakeDrive:
             resource["size"] = str(len(item.content))
         if item.trashed:
             resource["trashed"] = True
+        if item.resource_key:
+            resource["resourceKey"] = item.resource_key
         if item.shortcut_target:
             target_id, target_mime = item.shortcut_target
             resource["shortcutDetails"] = {"targetId": target_id, "targetMimeType": target_mime}
