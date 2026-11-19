@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from drive_text_extractor.config import Settings
 from drive_text_extractor.domain.errors import FolderNotFoundError, InvalidLinkError
-from drive_text_extractor.domain.models import SourceFile
+from drive_text_extractor.domain.models import LinkKind, SourceFile
 from drive_text_extractor.main import create_app
 from tests.fakes import FakeFileSource, FakeOcrEngine
 from tests.images import png_bytes
@@ -81,10 +81,11 @@ def test_health_reports_version_source_and_languages(client: TestClient) -> None
 
 
 def test_lists_supported_files_and_explains_skipped_ones(client: TestClient) -> None:
-    response = client.post("/api/folders/list", json={"link": LINK})
+    response = client.post("/api/files/list", json={"link": LINK})
 
     assert response.status_code == 200
     body = response.json()
+    assert body["kind"] == "folder"
     assert body["folder"] == {"id": "FakeFolderId01", "name": "Fake folder"}
     assert [f["name"] for f in body["files"]] == ["invoice.pdf", "receipt.png", "broken.pdf"]
     assert body["files"][0] == {
@@ -111,14 +112,14 @@ def test_listing_errors_use_the_error_envelope(
 ) -> None:
     source.list_error = error
 
-    response = client.post("/api/folders/list", json={"link": LINK})
+    response = client.post("/api/files/list", json={"link": LINK})
 
     assert response.status_code == status
     assert response.json() == {"error": {"code": code, "message": str(error)}}
 
 
 def test_invalid_request_bodies_use_the_error_envelope(client: TestClient) -> None:
-    response = client.post("/api/folders/list", json={})
+    response = client.post("/api/files/list", json={})
 
     assert response.status_code == 422
     error = response.json()["error"]
@@ -162,8 +163,9 @@ def test_exports_results_as_a_versioned_json_download(client: TestClient) -> Non
         'attachment; filename="extraction-fake-folder-'
     )
     export = response.json()
-    assert export["schema_version"] == "1.0"
+    assert export["schema_version"] == "1.1"
     assert export["source"]["type"] == "google_drive"
+    assert export["source"]["kind"] == "folder"
     assert export["source"]["link"] == LINK
     assert export["files"][0]["text"] == "Invoice 2026-001 total 120 TND"
 
@@ -208,7 +210,7 @@ def test_unexpected_errors_return_a_generic_500(source: FakeFileSource) -> None:
     )
 
     with TestClient(app, raise_server_exceptions=False) as client:
-        response = client.post("/api/folders/list", json={"link": LINK})
+        response = client.post("/api/files/list", json={"link": LINK})
 
     assert response.status_code == 500
     assert response.json() == {
@@ -220,7 +222,7 @@ def test_without_api_key_the_real_drive_source_explains_the_setup() -> None:
     app = create_app(settings(), ocr_engine=FakeOcrEngine(), installed_languages=())
 
     with TestClient(app) as client:
-        response = client.post("/api/folders/list", json={"link": LINK})
+        response = client.post("/api/files/list", json={"link": LINK})
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "source_not_configured"
@@ -237,7 +239,7 @@ def test_demo_mode_runs_the_whole_flow_on_a_local_folder(tmp_path: Path) -> None
 
     with TestClient(app) as client:
         assert client.get("/api/health").json()["source"] == "local"
-        listing = client.post("/api/folders/list", json={"link": "local:"}).json()
+        listing = client.post("/api/files/list", json={"link": "local:"}).json()
         assert [f["name"] for f in listing["files"]] == ["invoice.pdf"]
         assert [s["name"] for s in listing["skipped"]] == ["readme.txt"]
 
@@ -245,3 +247,22 @@ def test_demo_mode_runs_the_whole_flow_on_a_local_folder(tmp_path: Path) -> None
         job = wait_until_finished(client, client.post("/api/jobs", json=body).json()["id"])
 
     assert job["files"][0]["text"] == "Local invoice 7 from the demo folder"
+
+
+def test_a_single_file_link_is_listed_and_exported_as_such(source: FakeFileSource) -> None:
+    source.files = [FILES[0]]
+    source.kind = LinkKind.FILE
+    app = create_app(
+        settings(), file_source=source, ocr_engine=FakeOcrEngine(), installed_languages=()
+    )
+
+    with TestClient(app) as client:
+        listing = client.post("/api/files/list", json={"link": LINK}).json()
+        assert listing["kind"] == "file"
+        body = {"link": LINK, "file_ids": ["pdf-1"], "languages": ["eng"]}
+        job_id = client.post("/api/jobs", json=body).json()["id"]
+        wait_until_finished(client, job_id)
+        export = client.get(f"/api/jobs/{job_id}/export").json()
+
+    assert export["source"]["kind"] == "file"
+    assert export["files"][0]["status"] == "done"

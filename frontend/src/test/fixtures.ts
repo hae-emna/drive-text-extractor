@@ -13,6 +13,7 @@ export function driveFile(
 }
 
 export const LISTING: FolderListing = {
+  kind: 'folder',
   folder: { id: 'folder-1', name: 'Invoices 2026' },
   files: [
     driveFile({ id: 'pdf-1', name: 'invoice.pdf' }),

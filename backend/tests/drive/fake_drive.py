@@ -23,6 +23,7 @@ class Item:
     content: bytes = b""
     report_size: bool = True
     shortcut_target: tuple[str, str] | None = None
+    trashed: bool = False
 
 
 def drive_error(status: int, reason: str, headers: dict[str, str] | None = None) -> httpx.Response:
@@ -112,6 +113,8 @@ class FakeDrive:
         }
         if item.mime_type not in {FOLDER, SHORTCUT} and item.report_size:
             resource["size"] = str(len(item.content))
+        if item.trashed:
+            resource["trashed"] = True
         if item.shortcut_target:
             target_id, target_mime = item.shortcut_target
             resource["shortcutDetails"] = {"targetId": target_id, "targetMimeType": target_mime}

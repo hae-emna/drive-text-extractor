@@ -13,7 +13,7 @@ from drive_text_extractor.api.schemas import (
     HealthOut,
     JobOut,
     LanguageOut,
-    ListFolderRequest,
+    ListFilesRequest,
     StartJobRequest,
     export_out,
     job_out,
@@ -50,8 +50,9 @@ def health(container: ContainerDep) -> HealthOut:
     )
 
 
-@router.post("/folders/list", response_model=FolderListingOut, tags=["folders"])
-async def list_folder(body: ListFolderRequest, container: ContainerDep) -> FolderListingOut:
+@router.post("/files/list", response_model=FolderListingOut, tags=["files"])
+async def list_files(body: ListFilesRequest, container: ContainerDep) -> FolderListingOut:
+    """List what a link points to: the files of a folder, or one file."""
     listing = await container.browser.browse(body.link, recursive=body.recursive)
     return listing_out(listing)
 

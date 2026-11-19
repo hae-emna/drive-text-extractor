@@ -13,7 +13,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from drive_text_extractor.domain.models import ExtractionOptions, ExtractionResult, SourceFile
+from drive_text_extractor.domain.models import (
+    ExtractionOptions,
+    ExtractionResult,
+    LinkKind,
+    SourceFile,
+)
 
 
 class FileStatus(StrEnum):
@@ -78,6 +83,8 @@ class Job:
     created_at: datetime
     finished_at: datetime | None = None
     cancel_requested: bool = False
+    link_kind: LinkKind = LinkKind.FOLDER
+    """Whether the link pointed to a folder or to a single file."""
     _by_file_id: dict[str, FileTask] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:

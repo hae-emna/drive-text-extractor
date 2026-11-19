@@ -1,8 +1,8 @@
 {
-  "schema_version": "1.0",
-  "job_id": "750a99bc11444d3cb82767b0f2f1707a",
-  "created_at": "2026-11-19T15:23:28.329678Z",
-  "finished_at": "2026-11-19T15:23:32.424608Z",
+  "schema_version": "1.1",
+  "job_id": "884b3620bfe34716b3c736b8aa4c2b9d",
+  "created_at": "2026-11-19T16:39:53.760777Z",
+  "finished_at": "2026-11-19T16:39:57.462058Z",
   "languages": [
     "eng",
     "fra",
@@ -10,6 +10,7 @@
   ],
   "source": {
     "type": "local",
+    "kind": "folder",
     "link": "local:",
     "folder": {
       "id": ".",
@@ -39,7 +40,7 @@
       "mean_confidence": 92.3,
       "low_confidence": false,
       "char_count": 44,
-      "duration_ms": 934,
+      "duration_ms": 638,
       "text": "سيتم إغلاق المكتب يوم الجمعة\nشكرا على تفهمكم",
       "pages": [
         {
@@ -65,7 +66,7 @@
       "mean_confidence": 96.2,
       "low_confidence": false,
       "char_count": 241,
-      "duration_ms": 2311,
+      "duration_ms": 2038,
       "text": "SERVICE AGREEMENT\n\nThis agreement is made in Nabeul on 3 November 2026\nbetween the Provider and the Client named below.\n\nThe Provider will host and monitor the Client's\ndocument processing platform for twelve months.\n\nSigned by both parties.",
       "pages": [
         {
@@ -113,7 +114,7 @@
       "mean_confidence": 95.1,
       "low_confidence": false,
       "char_count": 92,
-      "duration_ms": 879,
+      "duration_ms": 833,
       "text": "Bon de livraison n° 88\nLivré le 14 novembre 2026 a Hammamet\n\nRecu en bon état par le client.",
       "pages": [
         {
@@ -171,7 +172,7 @@
       "mean_confidence": 95.3,
       "low_confidence": false,
       "char_count": 64,
-      "duration_ms": 758,
+      "duration_ms": 800,
       "text": "RECEIPT\n\nCoffee and pastries 18.500 TND\nPaid by card\n\nThank you!",
       "pages": [
         {
@@ -197,7 +198,7 @@
       "mean_confidence": 95.4,
       "low_confidence": false,
       "char_count": 179,
-      "duration_ms": 1780,
+      "duration_ms": 1661,
       "text": "Quarterly report Q3 2026\nTyped summary page with a text layer.\n\nANNEX A - Service levels\nAvailability target: 99.5 percent per month\n\nResponse time for critical incidents: 2 hours",
       "pages": [
         {
@@ -229,7 +230,7 @@
       "mean_confidence": 96.6,
       "low_confidence": false,
       "char_count": 122,
-      "duration_ms": 1155,
+      "duration_ms": 1049,
       "text": "Delivery note 2026-77\nThis page was scanned sideways\nand must be straightened before OCR.\n\nReceived by the warehouse team.",
       "pages": [
         {

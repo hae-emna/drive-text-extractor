@@ -11,7 +11,7 @@ from drive_text_extractor.domain.errors import (
     FolderNotFoundError,
     InvalidLinkError,
 )
-from drive_text_extractor.domain.models import FolderListing, SkippedFile, SourceFile
+from drive_text_extractor.domain.models import FolderListing, LinkKind, SkippedFile, SourceFile
 
 LINK_PREFIX = "local:"
 FOLDER_MIME = "inode/directory"
@@ -20,8 +20,9 @@ FOLDER_MIME = "inode/directory"
 class LocalFolderSource:
     """Lists and reads files under ``root``.
 
-    Links look like ``local:`` (the root itself) or ``local:invoices/2024``. File ids are paths
-    relative to the root. Anything that would resolve outside the root is refused.
+    Links look like ``local:`` (the root itself), ``local:invoices/2024`` (a subfolder) or
+    ``local:invoices/a.pdf`` (one file). File ids are paths relative to the root. Anything that
+    would resolve outside the root is refused.
     """
 
     def __init__(self, root: Path, *, max_file_bytes: int, max_items: int = 1000) -> None:
@@ -29,9 +30,14 @@ class LocalFolderSource:
         self._max_file_bytes = max_file_bytes
         self._max_items = max_items
 
-    async def list_folder(self, link: str, *, recursive: bool = False) -> FolderListing:
-        folder = self._folder_from(link)
-        return await asyncio.to_thread(self._list, folder, recursive)
+    async def list_files(self, link: str, *, recursive: bool = False) -> FolderListing:
+        target = self._target_from(link)
+        if target.is_file():
+            file = self._source_file(target, "")
+            return FolderListing(
+                folder_id=file.id, folder_name=file.name, files=(file,), kind=LinkKind.FILE
+            )
+        return await asyncio.to_thread(self._list, target, recursive)
 
     async def download(self, file: SourceFile) -> bytes:
         path = self._inside_root(file.id)
@@ -94,17 +100,17 @@ class LocalFolderSource:
             truncated=truncated,
         )
 
-    def _folder_from(self, link: str) -> Path:
+    def _target_from(self, link: str) -> Path:
         text = link.strip()
         if not text.startswith(LINK_PREFIX):
             raise InvalidLinkError(
                 "The server runs in demo mode and reads local folders: "
-                "type 'local:' for the sample folder."
+                "type 'local:' for the sample folder, or 'local:<file>' for one file."
             )
-        folder = self._inside_root(text.removeprefix(LINK_PREFIX).strip("/"))
-        if folder is None or not folder.is_dir():
-            raise FolderNotFoundError("This folder does not exist on the server.")
-        return folder
+        target = self._inside_root(text.removeprefix(LINK_PREFIX).strip("/"))
+        if target is None or not target.exists():
+            raise FolderNotFoundError("This folder or file does not exist on the server.")
+        return target
 
     def _inside_root(self, relative: str) -> Path | None:
         candidate = (self._root / relative).resolve()

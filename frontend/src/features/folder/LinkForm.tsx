@@ -24,7 +24,7 @@ export function LinkForm({ busy, demoMode = false, onSubmit }: LinkFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <label htmlFor={inputId} className="block text-sm font-medium">
-        Public Google Drive folder link
+        Public Google Drive link (folder or file)
       </label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
@@ -48,10 +48,11 @@ export function LinkForm({ busy, demoMode = false, onSubmit }: LinkFormProps) {
         <p id={hintId}>
           {demoMode ? (
             <>
-              Demo mode: the server reads its sample folder. Type <code>local:</code> to list it.
+              Demo mode: the server reads its sample folder. Type <code>local:</code> to list it, or{' '}
+              <code>local:&lt;file&gt;</code> for one file.
             </>
           ) : (
-            'Share the folder as “Anyone with the link”. PDF, PNG and JPEG files are processed.'
+            'Paste a folder or a single file shared as “Anyone with the link”. PDF, PNG and JPEG files are processed.'
           )}
         </p>
         <label className="inline-flex shrink-0 items-center gap-2">

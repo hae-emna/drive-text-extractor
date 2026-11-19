@@ -26,7 +26,7 @@ class SourceError(DomainError):
 
 class InvalidLinkError(SourceError):
     code = "invalid_link"
-    default_message = "This does not look like a Google Drive folder link."
+    default_message = "This does not look like a Google Drive folder or file link."
 
 
 class FolderNotFoundError(SourceError):
@@ -39,7 +39,9 @@ class FolderNotFoundError(SourceError):
 
 class FileNotAccessibleError(SourceError):
     code = "file_not_accessible"
-    default_message = "This file could not be downloaded: it was removed or is not public."
+    default_message = (
+        "File not found or not public. Check the link and share the file as 'Anyone with the link'."
+    )
 
 
 class RateLimitedError(SourceError):
