@@ -1,0 +1,43 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 361 >>
+stream
+BT /F1 13 Tf 20 TL 60 780 Td (FACTURE / INVOICE No 2026-0142) Tj T* (Date : 12 novembre 2026) Tj T* (Client : Société Atlas, Nabeul, Tunisie) Tj T* () Tj T* (Désignation                      Montant) Tj T* (Audit de sécurité cloud          1 800,000 TND) Tj T* (Support mensuel                    450,000 TND) Tj T* () Tj T* (Total TTC : 2 250,000 TND) Tj T* ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 162 >>
+stream
+BT /F1 13 Tf 20 TL 60 780 Td (Conditions de paiement) Tj T* (Paiement à 30 jours par virement bancaire.) Tj T* (Payment terms: 30 days by bank transfer.) Tj T* ET
+endstream
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000344 00000 n 
+0000000756 00000 n 
+0000000882 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+1095
+%%EOF
