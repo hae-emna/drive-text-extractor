@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     max_listed_files: int = Field(default=1000, ge=1)
     """Listing stops after this many files and the folder is flagged as truncated."""
 
+    # --- Extraction limits ---
+    max_pdf_pages: int = Field(default=200, ge=1)
+    """PDFs with more pages are refused, to bound processing time per file."""
+
     @property
     def max_file_bytes(self) -> int:
         return self.max_file_size_mb * 1_000_000
