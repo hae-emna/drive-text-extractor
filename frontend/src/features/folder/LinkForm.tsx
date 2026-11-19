@@ -4,10 +4,12 @@ import { Spinner } from '../../components/Spinner'
 
 interface LinkFormProps {
   busy: boolean
+  /** The server reads folders from its own disk instead of Google Drive. */
+  demoMode?: boolean
   onSubmit: (link: string, recursive: boolean) => void
 }
 
-export function LinkForm({ busy, onSubmit }: LinkFormProps) {
+export function LinkForm({ busy, demoMode = false, onSubmit }: LinkFormProps) {
   const [link, setLink] = useState('')
   const [recursive, setRecursive] = useState(false)
   const inputId = useId()
@@ -31,7 +33,7 @@ export function LinkForm({ busy, onSubmit }: LinkFormProps) {
           inputMode="url"
           autoComplete="off"
           spellCheck={false}
-          placeholder="https://drive.google.com/drive/folders/…"
+          placeholder={demoMode ? 'local:' : 'https://drive.google.com/drive/folders/…'}
           aria-describedby={hintId}
           value={link}
           onChange={(event) => setLink(event.target.value)}
@@ -44,7 +46,13 @@ export function LinkForm({ busy, onSubmit }: LinkFormProps) {
       </div>
       <div className="flex flex-col gap-2 text-sm text-zinc-600 sm:flex-row sm:items-center sm:justify-between dark:text-zinc-400">
         <p id={hintId}>
-          Share the folder as “Anyone with the link”. PDF, PNG and JPEG files are processed.
+          {demoMode ? (
+            <>
+              Demo mode: the server reads its sample folder. Type <code>local:</code> to list it.
+            </>
+          ) : (
+            'Share the folder as “Anyone with the link”. PDF, PNG and JPEG files are processed.'
+          )}
         </p>
         <label className="inline-flex shrink-0 items-center gap-2">
           <input
