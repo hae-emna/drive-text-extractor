@@ -8,7 +8,7 @@ from drive_text_extractor.domain.errors import (
     FolderNotFoundError,
     InvalidLinkError,
 )
-from drive_text_extractor.domain.models import SourceFile
+from drive_text_extractor.domain.models import LinkKind, SourceFile
 from drive_text_extractor.local.source import LocalFolderSource
 
 pytestmark = pytest.mark.anyio
@@ -51,6 +51,20 @@ async def test_lists_a_subfolder_by_its_path(source: LocalFolderSource) -> None:
 
     assert listing.folder_name == "2024"
     assert [f.id for f in listing.files] == ["2024/old.pdf"]
+
+
+async def test_lists_a_single_file_by_its_path(source: LocalFolderSource) -> None:
+    listing = await source.list_files("local:2024/old.pdf")
+
+    assert listing.kind is LinkKind.FILE
+    assert (listing.folder_id, listing.folder_name) == ("2024/old.pdf", "old.pdf")
+    assert [f.id for f in listing.files] == ["2024/old.pdf"]
+    assert await source.download(listing.files[0]) == b"%PDF-1.7 old"
+
+
+async def test_missing_paths_are_reported(source: LocalFolderSource) -> None:
+    with pytest.raises(FolderNotFoundError, match="does not exist"):
+        await source.list_files("local:nope.pdf")
 
 
 async def test_downloads_by_id(source: LocalFolderSource) -> None:
