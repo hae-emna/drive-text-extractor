@@ -7,22 +7,25 @@ program use.
 
 ## Runtime dependencies
 
-| Dependency | Licence | Commercial use | Used for |
-|---|---|---|---|
-| FastAPI | MIT | Yes | HTTP API |
-| Uvicorn | BSD-3-Clause | Yes | ASGI server |
-| Pydantic, pydantic-settings | MIT | Yes | Validation and settings |
-| httpx | BSD-3-Clause | Yes | Google Drive API client |
-| pypdfium2 (PDFium) | Apache-2.0 or BSD-3-Clause | Yes | PDF text layer and page rendering |
-| pytesseract | Apache-2.0 | Yes | Python wrapper around Tesseract |
-| Tesseract OCR 5 | Apache-2.0 | Yes | OCR engine, run as a separate process |
-| Pillow | MIT-CMU (HPND) | Yes | Image preparation for OCR |
-| RapidOCR | Apache-2.0 | Yes | OCR for photos and screenshots |
-| ONNX Runtime | MIT | Yes | Runs the OCR models |
-| OpenCV, headless build | Apache-2.0 | Yes | Image operations of RapidOCR's text detector |
-| PP-OCRv5 models (PaddleOCR, converted to ONNX by RapidOCR) | Apache-2.0 | Yes | Text detection, line orientation and Latin recognition, baked into the image |
-| React, React DOM | MIT | Yes | Web page |
-| Tailwind CSS | MIT | Yes | Styles |
+Versions are the ones locked in `backend/uv.lock` and `frontend/package-lock.json`, and the
+Debian package installed in the Docker image.
+
+| Dependency | Version | Licence | Commercial use | Used for |
+|---|---|---|---|---|
+| FastAPI | 0.165.0 | MIT | Yes | HTTP API |
+| Uvicorn | 0.54.0 | BSD-3-Clause | Yes | ASGI server |
+| Pydantic, pydantic-settings | 2.14.4, 2.16.3 | MIT | Yes | Validation and settings |
+| httpx | 0.28.1 | BSD-3-Clause | Yes | Google Drive API client |
+| pypdfium2 (PDFium) | 5.15.2 | Apache-2.0 or BSD-3-Clause | Yes | PDF text layer and page rendering |
+| pytesseract | 0.3.13 | Apache-2.0 | Yes | Python wrapper around Tesseract |
+| Tesseract OCR | 5.5.0 | Apache-2.0 | Yes | OCR engine, run as a separate process |
+| Pillow | 13.0.0 | MIT-CMU (HPND) | Yes | Image preparation for OCR |
+| RapidOCR | 3.10.0 | Apache-2.0 | Yes | OCR for photos and screenshots |
+| ONNX Runtime | 1.32.0 | MIT | Yes | Runs the OCR models |
+| OpenCV, headless build | 5.1.0.95 | Apache-2.0 | Yes | Image operations of RapidOCR's text detector |
+| PP-OCRv5 models (PaddleOCR, converted to ONNX by RapidOCR) | PP-OCRv5 mobile | Apache-2.0 | Yes | Text detection, line orientation and Latin recognition, baked into the image |
+| React, React DOM | 19.3.1 | MIT | Yes | Web page |
+| Tailwind CSS | 4.3.5 | MIT | Yes | Styles |
 
 Transitive dependencies are permissive (MIT, BSD, Apache-2.0, PSF-2.0), with weak-copyleft
 exceptions, all used unmodified, which their licences allow in commercial products:
