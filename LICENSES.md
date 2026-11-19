@@ -24,7 +24,17 @@ exceptions, both used unmodified, which their licences allow in commercial produ
 Tesseract).
 
 Build and test tools (uv, pytest, ruff, mypy, Vite, TypeScript, Vitest, oxlint, Prettier) are
-MIT or Apache-2.0 and are not shipped.
+MIT or Apache-2.0 and are not shipped. `lightningcss`, which Tailwind runs at build time, is
+MPL-2.0; its output is not covered by the MPL.
+
+## Notices
+
+- Pillow bundles FreeType under the FreeType Licence, which asks for this credit: *Portions of this
+  software are copyright © The FreeType Project (www.freetype.org). All rights reserved.*
+- The licence and NOTICE texts of the Python packages stay in the Docker image, in each package's
+  `dist-info`, and in `/usr/share/doc/*/copyright` for Debian packages.
+- Minification strips licence comments from the web page, so the build writes
+  `third-party-licenses.md` next to the bundle and the page footer links to it.
 
 ## Rejected for licence reasons
 
