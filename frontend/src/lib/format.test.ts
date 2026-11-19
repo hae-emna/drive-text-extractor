@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { fileTypeLabel, formatBytes, formatDuration, plural } from './format'
+import {
+  estimateRemainingMs,
+  fileTypeLabel,
+  formatBytes,
+  formatDuration,
+  formatElapsed,
+  formatRemaining,
+  plural,
+} from './format'
 
 describe('formatBytes', () => {
   it.each([
@@ -37,5 +45,41 @@ describe('plural', () => {
   it('picks the right form', () => {
     expect(plural(1, 'file')).toBe('1 file')
     expect(plural(3, 'file')).toBe('3 files')
+  })
+})
+
+describe('formatElapsed', () => {
+  it.each([
+    [0, '0 s'],
+    [8_400, '8 s'],
+    [60_000, '1 min 00 s'],
+    [125_000, '2 min 05 s'],
+  ])('formats %i ms as %s', (ms, expected) => {
+    expect(formatElapsed(ms)).toBe(expected)
+  })
+})
+
+describe('estimateRemainingMs', () => {
+  it('extrapolates the pace so far', () => {
+    expect(estimateRemainingMs(10_000, 2, 6)).toBe(20_000)
+  })
+
+  it.each([
+    [10_000, 0, 6],
+    [10_000, 6, 6],
+    [500, 1, 6],
+  ])('has no estimate yet or any more (%i ms, %i of %i)', (elapsed, finished, total) => {
+    expect(estimateRemainingMs(elapsed, finished, total)).toBeNull()
+  })
+})
+
+describe('formatRemaining', () => {
+  it.each([
+    [4_000, 'a few seconds left'],
+    [37_000, 'about 35 s left'],
+    [58_000, 'about 1 min left'],
+    [200_000, 'about 3 min left'],
+  ])('formats %i ms as %s', (ms, expected) => {
+    expect(formatRemaining(ms)).toBe(expected)
   })
 })

@@ -120,4 +120,16 @@ describe('ResultCard', () => {
       'true',
     )
   })
+
+  it('tells a queued file from one being read', () => {
+    const { rerender } = render(<ResultCard result={result(SCAN, { status: 'pending' })} />)
+
+    expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText(/Waiting for a free slot/)).toBeInTheDocument()
+
+    rerender(<ResultCard result={result(SCAN, { status: 'processing' })} />)
+
+    expect(screen.getByText('Downloading and extracting text…')).toBeInTheDocument()
+    expect(screen.queryByText(/Waiting for a free slot/)).not.toBeInTheDocument()
+  })
 })

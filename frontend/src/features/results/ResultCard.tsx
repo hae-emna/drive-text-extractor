@@ -1,16 +1,27 @@
-import type { FileResult } from '../../api/types'
+import type { FileResult, FileStatus } from '../../api/types'
+import { Skeleton } from '../../components/Skeleton'
+import { Spinner } from '../../components/Spinner'
 import { formatDuration, plural } from '../../lib/format'
 import { StatusBadge } from '../batch/StatusBadge'
 import { CopyButton } from './CopyButton'
 import { ExtractedText } from './ExtractedText'
 import { MethodBadge } from './MethodBadge'
 
+const BORDERS: Record<FileStatus, string> = {
+  pending: 'border-dashed border-zinc-300 dark:border-zinc-700',
+  processing: 'border-sky-200 dark:border-sky-900',
+  done: 'border-zinc-200 dark:border-zinc-800',
+  failed: 'border-red-200 dark:border-red-900',
+  cancelled: 'border-zinc-200 dark:border-zinc-800',
+}
+
 export function ResultCard({ result }: { result: FileResult }) {
   const { file, status, error } = result
   return (
     <article
       aria-label={file.path}
-      className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+      aria-busy={status === 'pending' || status === 'processing'}
+      className={`space-y-3 rounded-lg border p-4 transition-colors ${BORDERS[status]}`}
     >
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
@@ -33,7 +44,11 @@ export function ResultCard({ result }: { result: FileResult }) {
           using it.
         </p>
       )}
-      {status === 'done' && <ExtractedText text={result.text} />}
+      {status === 'done' && (
+        <div className="animate-fade-in motion-reduce:animate-none">
+          <ExtractedText text={result.text} />
+        </div>
+      )}
       {status === 'failed' && error && (
         <p className="text-sm text-red-700 dark:text-red-300">
           {error.message} <span className="font-mono text-xs opacity-70">({error.code})</span>
@@ -42,12 +57,12 @@ export function ResultCard({ result }: { result: FileResult }) {
       {status === 'cancelled' && (
         <p className="text-sm text-zinc-500">Skipped because the batch was cancelled.</p>
       )}
-      {(status === 'pending' || status === 'processing') && (
-        <div
-          className="h-16 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800"
-          aria-hidden="true"
-        />
+      {status === 'pending' && (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Waiting for a free slot; files are processed a few at a time.
+        </p>
       )}
+      {status === 'processing' && <ExtractingPlaceholder />}
     </article>
   )
 }
@@ -72,5 +87,22 @@ function ResultFacts({ result }: { result: FileResult }) {
       <span>{plural(result.char_count, 'character')}</span>
       <span>{formatDuration(result.duration_ms)}</span>
     </p>
+  )
+}
+
+/** Stands in for the text while the file is downloaded and read. */
+function ExtractingPlaceholder() {
+  return (
+    <div className="space-y-3">
+      <p className="inline-flex items-center gap-2 text-sm text-sky-800 dark:text-sky-200">
+        <Spinner className="size-3.5" />
+        Downloading and extracting text…
+      </p>
+      <div className="space-y-2 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950">
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-11/12" />
+        <Skeleton className="h-3 w-3/5" />
+      </div>
+    </div>
   )
 }
