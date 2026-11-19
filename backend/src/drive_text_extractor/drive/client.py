@@ -19,7 +19,7 @@ from drive_text_extractor.domain.errors import (
     SourceUnavailableError,
 )
 from drive_text_extractor.domain.models import FolderListing, SkippedFile, SourceFile
-from drive_text_extractor.drive.links import FolderLink, is_valid_id, parse_folder_link
+from drive_text_extractor.drive.links import DriveLink, is_valid_id, parse_drive_link
 
 API_ROOT = "https://www.googleapis.com/drive/v3"
 FOLDER_MIME = "application/vnd.google-apps.folder"
@@ -73,10 +73,10 @@ class GoogleDriveSource:
         self._sleep = sleep
 
     async def list_folder(self, link: str, *, recursive: bool = False) -> FolderListing:
-        ref = parse_folder_link(link)
+        ref = parse_drive_link(link)
         headers = _resource_key_header(ref)
         folder = await self._get_json(
-            f"{API_ROOT}/files/{ref.folder_id}",
+            f"{API_ROOT}/files/{ref.id}",
             {"fields": "id,name,mimeType", "supportsAllDrives": "true"},
             headers,
             not_found=FolderNotFoundError,
@@ -86,8 +86,8 @@ class GoogleDriveSource:
 
         files: list[SourceFile] = []
         skipped: list[SkippedFile] = []
-        pending = deque([(ref.folder_id, "")])
-        visited = {ref.folder_id}
+        pending = deque([(ref.id, "")])
+        visited = {ref.id}
         while pending:
             folder_id, prefix = pending.popleft()
             async for item in self._children(folder_id, headers):
@@ -248,10 +248,10 @@ def _retry_after(response: httpx.Response) -> float | None:
     return float(value) if value.isdigit() else None
 
 
-def _resource_key_header(ref: FolderLink) -> dict[str, str]:
+def _resource_key_header(ref: DriveLink) -> dict[str, str]:
     if ref.resource_key is None:
         return {}
-    return {"X-Goog-Drive-Resource-Keys": f"{ref.folder_id}/{ref.resource_key}"}
+    return {"X-Goog-Drive-Resource-Keys": f"{ref.id}/{ref.resource_key}"}
 
 
 def _resolve_shortcut(item: Json) -> Json | None:
@@ -277,7 +277,7 @@ def _to_source_file(item: Json, path: str) -> SourceFile:
 
 
 def _listing(
-    ref: FolderLink,
+    ref: DriveLink,
     folder: Json,
     files: list[SourceFile],
     skipped: list[SkippedFile],
@@ -285,7 +285,7 @@ def _listing(
     truncated: bool,
 ) -> FolderListing:
     return FolderListing(
-        folder_id=ref.folder_id,
+        folder_id=ref.id,
         folder_name=folder.get("name", ""),
         files=tuple(files),
         skipped=tuple(skipped),

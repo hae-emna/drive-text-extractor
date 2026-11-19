@@ -26,7 +26,7 @@ class SourceError(DomainError):
 
 class InvalidLinkError(SourceError):
     code = "invalid_link"
-    default_message = "This does not look like a Google Drive folder link."
+    default_message = "This does not look like a Google Drive folder or file link."
 
 
 class FolderNotFoundError(SourceError):

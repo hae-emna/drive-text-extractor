@@ -31,6 +31,13 @@ class SkippedFile:
     reason: str
 
 
+class LinkKind(StrEnum):
+    """What a pasted link points to."""
+
+    FOLDER = "folder"
+    FILE = "file"
+
+
 @dataclass(frozen=True, slots=True)
 class FolderListing:
     folder_id: str
