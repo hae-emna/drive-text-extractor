@@ -79,7 +79,8 @@ function ResultFacts({ result }: { result: FileResult }) {
       )}
       {result.mean_confidence !== null && (
         <span
-          className={result.low_confidence ? 'font-medium text-amber-700 dark:text-amber-300' : ''}
+          title="How sure the OCR engine is of the text it found. Text it did not find at all is not counted."
+          className={`cursor-help underline decoration-dotted underline-offset-2 ${result.low_confidence ? 'font-medium text-amber-700 dark:text-amber-300' : ''}`}
         >
           OCR confidence {Math.round(result.mean_confidence)}%
         </span>
