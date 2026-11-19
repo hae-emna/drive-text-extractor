@@ -164,6 +164,13 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
           </>
         )}
       </main>
+
+      <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs text-zinc-500">
+        Open source under the MIT licence ·{' '}
+        <a href="/third-party-licenses.md" className="underline hover:text-zinc-800">
+          Third-party licences
+        </a>
+      </footer>
     </div>
   )
 }

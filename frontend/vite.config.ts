@@ -8,6 +8,11 @@ const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:8000'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    // Bundled dependencies (React...) lose their licence comments when minified; ship their
+    // notices next to the bundle instead, as their MIT licences require.
+    license: { fileName: 'third-party-licenses.md' },
+  },
   server: {
     // The browser only talks to the Vite origin; API calls are forwarded to FastAPI.
     proxy: { '/api': BACKEND_URL },
