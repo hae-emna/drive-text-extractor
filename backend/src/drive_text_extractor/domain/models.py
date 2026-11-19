@@ -37,6 +37,8 @@ class FolderListing:
     folder_name: str
     files: tuple[SourceFile, ...]
     skipped: tuple[SkippedFile, ...] = ()
+    truncated: bool = False
+    """True when the source stopped listing at its item limit."""
 
 
 class ExtractionMethod(StrEnum):

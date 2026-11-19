@@ -33,3 +33,16 @@ def test_api_key_is_masked_when_printed(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setenv("GOOGLE_API_KEY", "super-secret")
 
     assert "super-secret" not in repr(make_settings())
+
+
+def test_file_size_limit_is_exposed_in_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MAX_FILE_SIZE_MB", "10")
+
+    assert make_settings().max_file_bytes == 10_000_000
+
+
+def test_rejects_nonsensical_limits(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MAX_FILE_SIZE_MB", "0")
+
+    with pytest.raises(ValueError, match="max_file_size_mb"):
+        make_settings()
