@@ -56,6 +56,10 @@ addopts = "-ra --strict-markers"
 markers = [
     "ocr: needs the Tesseract binary and language packs installed",
 ]
+filterwarnings = [
+    # Starlette's TestClient announces a future switch away from httpx; nothing to do yet.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
 
 [[tool.mypy.overrides]]
 # These libraries ship no type information.

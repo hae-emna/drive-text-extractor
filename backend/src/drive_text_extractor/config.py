@@ -4,6 +4,7 @@ Every tunable is read here, once, from environment variables or an optional ``.e
 The rest of the code receives a ``Settings`` instance and never touches ``os.environ``.
 """
 
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr
@@ -22,6 +23,16 @@ class Settings(BaseSettings):
     """Google Cloud API key with the Drive API enabled. Only needed for the Drive source."""
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
+    static_dir: Path | None = None
+    """Built web page to serve at ``/``. Unset during development, when Vite serves it."""
+
+    # --- Batch processing ---
+    batch_concurrency: int = Field(default=2, ge=1, le=16)
+    """Files processed at the same time. OCR is CPU-bound: keep it near the number of cores."""
+
+    low_confidence_threshold: float = Field(default=60.0, ge=0, le=100)
+    """OCR results with a mean word confidence below this are flagged in the UI and export."""
 
     # --- Source limits ---
     max_file_size_mb: int = Field(default=25, ge=1, le=500)
