@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
-import type { DriveFile } from '../../api/types'
+import type { DriveFile, FileResult } from '../../api/types'
 import { fileTypeLabel, formatBytes } from '../../lib/format'
+import { StatusBadge } from '../batch/StatusBadge'
 import { selectionState } from './selection'
 
 interface FileTableProps {
@@ -9,6 +10,8 @@ interface FileTableProps {
   onToggle: (id: string) => void
   onToggleAll: () => void
   disabled?: boolean
+  /** Per-file batch results; adds a status column when present. */
+  results?: ReadonlyMap<string, FileResult>
 }
 
 export function FileTable({
@@ -17,6 +20,7 @@ export function FileTable({
   onToggle,
   onToggleAll,
   disabled = false,
+  results,
 }: FileTableProps) {
   const state = selectionState(
     selected,
@@ -54,6 +58,11 @@ export function FileTable({
             <th scope="col" className="px-3 py-2 text-right font-medium">
               Size
             </th>
+            {results && (
+              <th scope="col" className="px-3 py-2 font-medium">
+                Status
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -79,10 +88,25 @@ export function FileTable({
               </td>
               <td className="px-3 py-2 font-mono text-xs">{fileTypeLabel(file.mime_type)}</td>
               <td className="px-3 py-2 text-right tabular-nums">{formatBytes(file.size_bytes)}</td>
+              {results && (
+                <td className="px-3 py-2">
+                  <StatusCell result={results.get(file.id)} />
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  )
+}
+
+function StatusCell({ result }: { result: FileResult | undefined }) {
+  if (!result) return <span className="text-zinc-400">—</span>
+  return (
+    <span className="inline-flex items-center gap-2">
+      <StatusBadge status={result.status} />
+      {result.error && <span className="sr-only">{result.error.message}</span>}
+    </span>
   )
 }

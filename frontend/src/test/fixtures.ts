@@ -1,4 +1,4 @@
-import type { DriveFile, FolderListing } from '../api/types'
+import type { DriveFile, FileResult, FolderListing, Health, Job } from '../api/types'
 
 export function driveFile(
   overrides: Partial<DriveFile> & Pick<DriveFile, 'id' | 'name'>,
@@ -27,6 +27,59 @@ export const LISTING: FolderListing = {
     },
   ],
   truncated: false,
+}
+
+export const HEALTH: Health = {
+  status: 'ok',
+  version: '0.1.0',
+  source: 'google_drive',
+  languages: [
+    { code: 'eng', name: 'English', installed: true },
+    { code: 'fra', name: 'French', installed: true },
+    { code: 'ara', name: 'Arabic', installed: true },
+  ],
+}
+
+export function result(
+  file: DriveFile,
+  overrides: Partial<FileResult> & Pick<FileResult, 'status'>,
+): FileResult {
+  return {
+    file,
+    method: null,
+    mean_confidence: null,
+    low_confidence: false,
+    char_count: 0,
+    duration_ms: null,
+    text: '',
+    pages: [],
+    error: null,
+    ...overrides,
+  }
+}
+
+export function job(files: FileResult[], overrides: Partial<Job> = {}): Job {
+  const count = (status: FileResult['status']) => files.filter((f) => f.status === status).length
+  const finished = files.every((f) => ['done', 'failed', 'cancelled'].includes(f.status))
+  return {
+    id: 'job-1',
+    status: finished ? 'finished' : 'running',
+    created_at: '2026-11-19T09:00:00Z',
+    finished_at: finished ? '2026-11-19T09:00:05Z' : null,
+    cancel_requested: false,
+    folder: LISTING.folder,
+    languages: ['eng', 'fra'],
+    summary: {
+      total: files.length,
+      pending: count('pending'),
+      processing: count('processing'),
+      done: count('done'),
+      failed: count('failed'),
+      cancelled: count('cancelled'),
+    },
+    files,
+    ...overrides,
+  }
 }
 
 /** Replace fetch with a router of canned JSON responses keyed by "METHOD /path". */
