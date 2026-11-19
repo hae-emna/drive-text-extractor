@@ -80,3 +80,31 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker:
+    name: Docker · build and end-to-end smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build the runtime image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: runtime
+          tags: drive-text-extractor:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start the app in demo mode
+        run: docker run -d --name app -p 8000:8000 -e FILE_SOURCE=local drive-text-extractor:ci
+
+      - name: Smoke test
+        run: python3 scripts/smoke_test.py http://localhost:8000
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker logs app
