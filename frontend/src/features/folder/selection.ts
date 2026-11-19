@@ -9,9 +9,15 @@ export function toggle(selected: ReadonlySet<string>, id: string): Set<string> {
   return next
 }
 
-/** Select everything, or clear the selection when everything is already selected. */
-export function toggleAll(selected: ReadonlySet<string>, allIds: readonly string[]): Set<string> {
-  return selectionState(selected, allIds) === 'all' ? new Set() : new Set(allIds)
+/**
+ * Select every id of a group (e.g. one page), or unselect them all when they all are selected.
+ * Ids outside the group keep their state.
+ */
+export function toggleAll(selected: ReadonlySet<string>, groupIds: readonly string[]): Set<string> {
+  const next = new Set(selected)
+  if (selectionState(selected, groupIds) === 'all') for (const id of groupIds) next.delete(id)
+  else for (const id of groupIds) next.add(id)
+  return next
 }
 
 export function selectionState(
