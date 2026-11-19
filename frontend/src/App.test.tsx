@@ -41,6 +41,31 @@ describe('App', () => {
     expect(screen.getByText(/Export them to PDF first/)).toBeVisible()
   })
 
+  it('shows a placeholder table while the link is listed', async () => {
+    let respond: (response: Response) => void = () => {}
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input) === '/api/files/list'
+          ? new Promise<Response>((resolve) => {
+              respond = resolve
+            })
+          : Promise.resolve(new Response(JSON.stringify(HEALTH))),
+      ),
+    )
+    await listFolder()
+
+    const placeholder = screen.getByRole('region', { name: /Listing files/ })
+    expect(placeholder).toHaveAttribute('aria-busy', 'true')
+    expect(within(placeholder).getByRole('status')).toHaveTextContent('Reading the link…')
+    expect(screen.getByRole('button', { name: 'Listing…' })).toBeDisabled()
+
+    respond(new Response(JSON.stringify(LISTING)))
+
+    expect(await screen.findByText(/Choose files in “Invoices 2026”/)).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: /Listing files/ })).not.toBeInTheDocument()
+  })
+
   it('shows the backend message when the folder cannot be listed', async () => {
     vi.stubGlobal(
       'fetch',

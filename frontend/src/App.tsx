@@ -11,6 +11,7 @@ import { useBatchJob } from './features/batch/useBatchJob'
 import { useHealth } from './features/batch/useHealth'
 import { FileTable } from './features/folder/FileTable'
 import { LinkForm } from './features/folder/LinkForm'
+import { ListingSkeleton } from './features/folder/ListingSkeleton'
 import { SkippedFiles } from './features/folder/SkippedFiles'
 import { selectedInOrder } from './features/folder/selection'
 import { useFolderListing } from './features/folder/useFolderListing'
@@ -77,6 +78,12 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
             />
           </fieldset>
         </Section>
+
+        {listing.status === 'loading' && (
+          <Section step="02" title="Listing files…" busy>
+            <ListingSkeleton recursive={listing.request.recursive} />
+          </Section>
+        )}
 
         {listing.status === 'error' && (
           <Alert tone="error" title="This folder could not be listed">

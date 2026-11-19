@@ -10,7 +10,7 @@ export interface ListingRequest {
 
 export type ListingState =
   | { status: 'idle' }
-  | { status: 'loading' }
+  | { status: 'loading'; request: ListingRequest }
   | { status: 'error'; error: ApiError }
   | { status: 'loaded'; listing: FolderListing; request: ListingRequest }
 
@@ -23,7 +23,7 @@ export function useFolderListing() {
   const load = useCallback(
     async (link: string, recursive: boolean): Promise<FolderListing | null> => {
       const requestNumber = ++latest.current
-      setState({ status: 'loading' })
+      setState({ status: 'loading', request: { link, recursive } })
       try {
         const listing = await api.listFiles(link, recursive)
         if (requestNumber !== latest.current) return null

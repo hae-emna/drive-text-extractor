@@ -4,16 +4,19 @@ interface SectionProps {
   step: string
   title: string
   aside?: ReactNode
+  /** The section's content is loading. */
+  busy?: boolean
   children: ReactNode
 }
 
 /** One numbered step of the flow: link, files, results. */
-export function Section({ step, title, aside, children }: SectionProps) {
+export function Section({ step, title, aside, busy = false, children }: SectionProps) {
   const headingId = `step-${step}`
   return (
     <section
       aria-labelledby={headingId}
-      className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+      aria-busy={busy || undefined}
+      className="animate-fade-in rounded-xl border border-zinc-200 bg-white p-5 shadow-sm motion-reduce:animate-none dark:border-zinc-800 dark:bg-zinc-900"
     >
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <h2 id={headingId} className="flex items-baseline gap-3 text-base font-semibold">
