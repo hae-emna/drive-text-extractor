@@ -51,7 +51,7 @@ def health(container: ContainerDep) -> HealthOut:
 
 
 @router.post("/folders/list", response_model=FolderListingOut, tags=["folders"])
-async def list_folder(body: ListFolderRequest, container: ContainerDep) -> FolderListingOut:
+async def list_files(body: ListFolderRequest, container: ContainerDep) -> FolderListingOut:
     listing = await container.browser.browse(body.link, recursive=body.recursive)
     return listing_out(listing)
 

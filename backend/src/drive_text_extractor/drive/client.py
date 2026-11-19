@@ -72,7 +72,7 @@ class GoogleDriveSource:
         self._retry = retry or RetryPolicy()
         self._sleep = sleep
 
-    async def list_folder(self, link: str, *, recursive: bool = False) -> FolderListing:
+    async def list_files(self, link: str, *, recursive: bool = False) -> FolderListing:
         ref = parse_drive_link(link)
         headers = _resource_key_header(ref)
         folder = await self._get_json(

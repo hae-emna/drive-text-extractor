@@ -16,7 +16,7 @@ class FolderBrowser:
 
     async def browse(self, link: str, *, recursive: bool = False) -> FolderListing:
         """List the folder, keep the files an extractor supports, and explain the others."""
-        listing = await self._source.list_folder(link, recursive=recursive)
+        listing = await self._source.list_files(link, recursive=recursive)
         supported: list[SourceFile] = []
         skipped = list(listing.skipped)
         for file in listing.files:

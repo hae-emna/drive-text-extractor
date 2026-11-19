@@ -40,12 +40,18 @@ class LinkKind(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class FolderListing:
+    """The files a link points to: a folder's content, or a single file.
+
+    For a single-file link, ``folder_id`` and ``folder_name`` are those of the file itself.
+    """
+
     folder_id: str
     folder_name: str
     files: tuple[SourceFile, ...]
     skipped: tuple[SkippedFile, ...] = ()
     truncated: bool = False
     """True when the source stopped listing at its item limit."""
+    kind: LinkKind = LinkKind.FOLDER
 
 
 class ExtractionMethod(StrEnum):

@@ -27,8 +27,8 @@ class FileSource(Protocol):
     Implementations raise only ``SourceError`` subclasses.
     """
 
-    async def list_folder(self, link: str, *, recursive: bool = False) -> FolderListing:
-        """List every file in the folder the link points to.
+    async def list_files(self, link: str, *, recursive: bool = False) -> FolderListing:
+        """List the files a link points to: every file of a folder, or the single file itself.
 
         The listing is unfiltered: deciding what can be extracted is the caller's job.
         """

@@ -29,7 +29,7 @@ class LocalFolderSource:
         self._max_file_bytes = max_file_bytes
         self._max_items = max_items
 
-    async def list_folder(self, link: str, *, recursive: bool = False) -> FolderListing:
+    async def list_files(self, link: str, *, recursive: bool = False) -> FolderListing:
         folder = self._folder_from(link)
         return await asyncio.to_thread(self._list, folder, recursive)
 

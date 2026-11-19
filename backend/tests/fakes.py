@@ -49,7 +49,7 @@ class FakeFileSource:
     in_flight: int = 0
     max_in_flight: int = 0
 
-    async def list_folder(self, link: str, *, recursive: bool = False) -> FolderListing:
+    async def list_files(self, link: str, *, recursive: bool = False) -> FolderListing:
         self.listed_recursively.append(recursive)
         if self.list_error is not None:
             raise self.list_error
