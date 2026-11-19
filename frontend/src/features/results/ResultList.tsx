@@ -1,7 +1,13 @@
+import { useRef } from 'react'
 import { api } from '../../api/client'
 import type { Job } from '../../api/types'
 import { Button } from '../../components/Button'
+import { Pagination } from '../../components/Pagination'
+import { revealTop } from '../../lib/dom'
+import { usePagination } from '../../lib/usePagination'
 import { ResultCard } from './ResultCard'
+
+const PAGE_SIZES = [10, 25, 50]
 
 interface ResultListProps {
   job: Job
@@ -11,9 +17,11 @@ interface ResultListProps {
 export function ResultList({ job, onSelectFailed }: ResultListProps) {
   const finished = job.status === 'finished'
   const failedIds = job.files.filter((r) => r.status === 'failed').map((r) => r.file.id)
+  const pager = usePagination(job.files, PAGE_SIZES)
+  const topRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div className="space-y-4">
+    <div ref={topRef} className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         {finished ? (
           <a
@@ -34,9 +42,15 @@ export function ResultList({ job, onSelectFailed }: ResultListProps) {
           </Button>
         )}
       </div>
-      {job.files.map((result) => (
+      {pager.items.map((result) => (
         <ResultCard key={result.file.id} result={result} />
       ))}
+      <Pagination
+        label="Result pages"
+        noun="result"
+        pager={pager}
+        onNavigate={() => revealTop(topRef.current)}
+      />
     </div>
   )
 }

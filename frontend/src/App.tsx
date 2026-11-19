@@ -12,7 +12,7 @@ import { useHealth } from './features/batch/useHealth'
 import { FileTable } from './features/folder/FileTable'
 import { LinkForm } from './features/folder/LinkForm'
 import { SkippedFiles } from './features/folder/SkippedFiles'
-import { selectedInOrder, toggle, toggleAll } from './features/folder/selection'
+import { selectedInOrder } from './features/folder/selection'
 import { useFolderListing } from './features/folder/useFolderListing'
 import { ResultList } from './features/results/ResultList'
 import { plural } from './lib/format'
@@ -121,8 +121,7 @@ export default function App({ pollIntervalMs = 1000 }: AppProps) {
                   <FileTable
                     files={files}
                     selected={selected}
-                    onToggle={(id) => setSelected((current) => toggle(current, id))}
-                    onToggleAll={() => setSelected((current) => toggleAll(current, fileIds))}
+                    onSelectionChange={setSelected}
                     disabled={busy}
                     results={results}
                   />

@@ -1,22 +1,29 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
-import { LISTING } from '../../test/fixtures'
+import type { DriveFile } from '../../api/types'
+import { driveFile, LISTING } from '../../test/fixtures'
 import { FileTable } from './FileTable'
-import { toggle, toggleAll } from './selection'
 
-function Harness() {
+function Harness({ files = LISTING.files }: { files?: DriveFile[] }) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
-  const ids = LISTING.files.map((file) => file.id)
   return (
-    <FileTable
-      files={LISTING.files}
-      selected={selected}
-      onToggle={(id) => setSelected((current) => toggle(current, id))}
-      onToggleAll={() => setSelected((current) => toggleAll(current, ids))}
-    />
+    <>
+      <FileTable files={files} selected={selected} onSelectionChange={setSelected} />
+      <output>{selected.size} selected</output>
+    </>
   )
+}
+
+const MANY = Array.from({ length: 60 }, (_, index) =>
+  driveFile({ id: `f-${index + 1}`, name: `doc-${String(index + 1).padStart(2, '0')}.pdf` }),
+)
+
+function rowNames(): string[] {
+  return screen
+    .getAllByRole('checkbox', { name: /^Select doc-/ })
+    .map((box) => box.getAttribute('aria-label')?.replace('Select ', '') ?? '')
 }
 
 describe('FileTable', () => {
@@ -56,5 +63,72 @@ describe('FileTable', () => {
     expect(screen.getAllByRole('checkbox').some((box) => (box as HTMLInputElement).checked)).toBe(
       false,
     )
+  })
+
+  it('shows one page at a time and moves between pages', async () => {
+    const user = userEvent.setup()
+    render(<Harness files={MANY} />)
+    const nav = screen.getByRole('navigation', { name: 'File pages' })
+
+    expect(rowNames()).toHaveLength(25)
+    expect(rowNames()[0]).toBe('doc-01.pdf')
+    expect(within(nav).getByText(/Showing/)).toHaveTextContent('Showing 1–25 of 60 files')
+    expect(within(nav).getByRole('button', { name: 'Previous page' })).toBeDisabled()
+
+    await user.click(within(nav).getByRole('button', { name: 'Page 3' }))
+
+    expect(rowNames()).toEqual(MANY.slice(50).map((file) => file.name))
+    expect(within(nav).getByRole('button', { name: 'Page 3' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(within(nav).getByRole('button', { name: 'Next page' })).toBeDisabled()
+  })
+
+  it('keeps the first visible file on screen when the page size changes', async () => {
+    const user = userEvent.setup()
+    render(<Harness files={MANY} />)
+
+    await user.click(screen.getByRole('button', { name: 'Page 2' }))
+    await user.selectOptions(screen.getByLabelText('Per page'), '50')
+
+    expect(rowNames()[0]).toBe('doc-01.pdf')
+    expect(rowNames()).toHaveLength(50)
+    expect(screen.getByText(/Showing/)).toHaveTextContent('Showing 1–50 of 60 files')
+  })
+
+  it('selects a page, then offers to extend the selection to every page', async () => {
+    const user = userEvent.setup()
+    render(<Harness files={MANY} />)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select all files on this page' }))
+    expect(screen.getByText('25 selected')).toBeInTheDocument()
+    expect(screen.getByText(/All 25 files on this page are selected/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Select all 60 files' }))
+    expect(screen.getByText('60 selected')).toBeInTheDocument()
+    expect(screen.getByText(/All 60 files are selected/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Clear selection' }))
+    expect(screen.getByText('0 selected')).toBeInTheDocument()
+  })
+
+  it('keeps selections made on other pages', async () => {
+    const user = userEvent.setup()
+    render(<Harness files={MANY} />)
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select doc-01.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    const pageBox = screen.getByRole('checkbox', { name: 'Select all files on this page' })
+    await user.click(pageBox)
+    await user.click(pageBox)
+
+    expect(screen.getByText('1 selected')).toBeInTheDocument()
+  })
+
+  it('hides the page controls when every file fits on one page', () => {
+    render(<Harness />)
+
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 })
