@@ -30,8 +30,16 @@ def get_container(request: Request) -> Container:
 
 ContainerDep = Annotated[Container, Depends(get_container)]
 
+_ERROR_STATUSES = (
+    status.HTTP_400_BAD_REQUEST,
+    status.HTTP_404_NOT_FOUND,
+    status.HTTP_422_UNPROCESSABLE_CONTENT,
+    status.HTTP_429_TOO_MANY_REQUESTS,
+    status.HTTP_502_BAD_GATEWAY,
+    status.HTTP_503_SERVICE_UNAVAILABLE,
+)
 _ERRORS: dict[int | str, dict[str, Any]] = {
-    code: {"model": ErrorResponse} for code in (400, 404, 422, 429, 502, 503)
+    code: {"model": ErrorResponse} for code in _ERROR_STATUSES
 }
 
 router = APIRouter(responses=_ERRORS)

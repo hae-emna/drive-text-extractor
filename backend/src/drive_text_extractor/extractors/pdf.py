@@ -19,6 +19,8 @@ from drive_text_extractor.domain.models import (
     PageText,
 )
 from drive_text_extractor.domain.ports import OcrEngine
+from drive_text_extractor.domain.units import PIXELS_PER_MEGAPIXEL
+from drive_text_extractor.extractors.image import DEFAULT_MAX_MEGAPIXELS
 from drive_text_extractor.extractors.text import normalize_text
 
 PDF_SIGNATURE = b"%PDF-"
@@ -27,6 +29,11 @@ _SIGNATURE_WINDOW = 1024
 
 
 _POINTS_PER_INCH = 72
+
+DEFAULT_MAX_PAGES = 200
+DEFAULT_MIN_TEXT_CHARS = 20
+"""Pages whose text layer has fewer visible characters are treated as scans."""
+DEFAULT_RENDER_DPI = 300
 
 _PDFIUM_LOCK = threading.Lock()
 """PDFium is not thread-safe: no two threads may call into it at the same time, even on
@@ -47,10 +54,10 @@ class PdfExtractor:
         self,
         *,
         ocr: OcrEngine | None = None,
-        max_pages: int = 200,
-        min_text_chars: int = 20,
-        render_dpi: int = 300,
-        max_render_pixels: int = 40_000_000,
+        max_pages: int = DEFAULT_MAX_PAGES,
+        min_text_chars: int = DEFAULT_MIN_TEXT_CHARS,
+        render_dpi: int = DEFAULT_RENDER_DPI,
+        max_render_pixels: int = DEFAULT_MAX_MEGAPIXELS * PIXELS_PER_MEGAPIXEL,
     ) -> None:
         self._ocr = ocr
         self._max_pages = max_pages

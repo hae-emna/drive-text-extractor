@@ -4,6 +4,9 @@ from collections import OrderedDict
 
 from drive_text_extractor.domain.jobs import Job
 
+DEFAULT_MAX_JOBS = 100
+"""Older jobs are forgotten once this many are kept."""
+
 
 class InMemoryJobStore:
     """Keeps the most recent jobs in process memory.
@@ -12,7 +15,7 @@ class InMemoryJobStore:
     implement the same three methods on Redis or a database.
     """
 
-    def __init__(self, max_jobs: int = 100) -> None:
+    def __init__(self, max_jobs: int = DEFAULT_MAX_JOBS) -> None:
         self._max_jobs = max_jobs
         self._jobs: OrderedDict[str, Job] = OrderedDict()
 

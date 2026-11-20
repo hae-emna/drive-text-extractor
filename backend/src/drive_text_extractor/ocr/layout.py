@@ -19,6 +19,8 @@ SAME_ROW = 0.5
 PARAGRAPH_GAP = 1.0
 """Rows further apart than this many typical line heights are separated by a blank line."""
 
+_QUAD_CORNERS = 4
+
 
 @dataclass(frozen=True, slots=True)
 class TextLine:
@@ -48,7 +50,7 @@ class TextLine:
         The upright extent of a slanted box is much larger than its text, and would make two
         lines of a slanted sign look like one row.
         """
-        if len(self.corners) != 4:
+        if len(self.corners) != _QUAD_CORNERS:
             return self.bottom - self.top
         top_left, top_right, bottom_right, bottom_left = self.corners
         return (dist(top_left, bottom_left) + dist(top_right, bottom_right)) / 2

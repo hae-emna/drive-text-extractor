@@ -21,12 +21,20 @@ from drive_text_extractor.extractors.text import normalize_text
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_TIMEOUT_SECONDS = 120
+
+_ORIENTATION_PACK = "osd"
+"""Tesseract's orientation and script detection data, listed as a language but not one."""
+_WHITE = 255
+
 _MIN_ORIENTATION_CONFIDENCE = 2.0
 """Below this, Tesseract's orientation guess is noise (its own docs suggest ~2 as a floor)."""
 
 
 class TesseractEngine:
-    def __init__(self, *, timeout_seconds: int = 120, auto_rotate: bool = True) -> None:
+    def __init__(
+        self, *, timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS, auto_rotate: bool = True
+    ) -> None:
         self._timeout = timeout_seconds
         self._auto_rotate = auto_rotate
 
@@ -68,7 +76,7 @@ class TesseractEngine:
             return image
         logger.debug("Rotating image by %s degrees before OCR", angle)
         # OSD reports a clockwise correction; Pillow rotates counter-clockwise.
-        return image.rotate(-angle, expand=True, fillcolor=255)
+        return image.rotate(-angle, expand=True, fillcolor=_WHITE)
 
     @staticmethod
     def available_languages() -> list[str]:
@@ -78,7 +86,7 @@ class TesseractEngine:
         except (pytesseract.TesseractNotFoundError, pytesseract.TesseractError, OSError):
             logger.warning("Tesseract is not available; OCR will fail")
             return []
-        return sorted(lang for lang in languages if lang != "osd")
+        return sorted(lang for lang in languages if lang != _ORIENTATION_PACK)
 
 
 def mean_word_confidence(tsv: str) -> float | None:

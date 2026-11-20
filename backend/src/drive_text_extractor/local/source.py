@@ -12,6 +12,7 @@ from drive_text_extractor.domain.errors import (
     InvalidLinkError,
 )
 from drive_text_extractor.domain.models import FolderListing, LinkKind, SkippedFile, SourceFile
+from drive_text_extractor.domain.ports import DEFAULT_MAX_LISTED_FILES
 
 LINK_PREFIX = "local:"
 FOLDER_MIME = "inode/directory"
@@ -25,7 +26,9 @@ class LocalFolderSource:
     would resolve outside the root is refused.
     """
 
-    def __init__(self, root: Path, *, max_file_bytes: int, max_items: int = 1000) -> None:
+    def __init__(
+        self, root: Path, *, max_file_bytes: int, max_items: int = DEFAULT_MAX_LISTED_FILES
+    ) -> None:
         self._root = root.resolve()
         self._max_file_bytes = max_file_bytes
         self._max_items = max_items
@@ -45,10 +48,7 @@ class LocalFolderSource:
             raise FileNotAccessibleError()
         size = path.stat().st_size
         if size > self._max_file_bytes:
-            limit_mb = self._max_file_bytes / 1_000_000
-            raise FileTooLargeError(
-                f"This file is {size / 1_000_000:.1f} MB; the limit is {limit_mb:g} MB."
-            )
+            raise FileTooLargeError.over_limit(self._max_file_bytes, size)
         return await asyncio.to_thread(path.read_bytes)
 
     def _list(self, folder: Path, recursive: bool) -> FolderListing:

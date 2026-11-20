@@ -14,8 +14,8 @@ from fastapi.staticfiles import StaticFiles
 from drive_text_extractor import __version__
 from drive_text_extractor.api.errors import install_error_handlers
 from drive_text_extractor.api.routes import router
-from drive_text_extractor.config import Settings
-from drive_text_extractor.container import Container, SourceType
+from drive_text_extractor.config import OcrEngineName, Settings, SourceType
+from drive_text_extractor.container import Container
 from drive_text_extractor.domain.ports import FileSource, OcrEngine
 from drive_text_extractor.drive.client import GoogleDriveSource
 from drive_text_extractor.extractors.image import ImageExtractor
@@ -107,9 +107,9 @@ def build_container(
                 max_pages=settings.max_pdf_pages,
                 min_text_chars=settings.pdf_ocr_min_chars,
                 render_dpi=settings.pdf_render_dpi,
-                max_render_pixels=settings.max_image_megapixels * 1_000_000,
+                max_render_pixels=settings.max_image_pixels,
             ),
-            ImageExtractor(image_ocr, max_pixels=settings.max_image_megapixels * 1_000_000),
+            ImageExtractor(image_ocr, max_pixels=settings.max_image_pixels),
         ]
     )
     browser = FolderBrowser(source, router)
@@ -129,7 +129,7 @@ def _image_ocr(settings: Settings, tesseract: TesseractEngine) -> OcrEngine:
 
     Scanned PDF pages keep Tesseract: they are pages, which its layout analysis handles well.
     """
-    if settings.image_ocr_engine == "tesseract":
+    if settings.image_ocr_engine is OcrEngineName.TESSERACT:
         return tesseract
     rapid = RapidOcrEngine(
         models_dir=settings.ocr_models_dir,
@@ -143,14 +143,14 @@ def _file_source(
 ) -> tuple[FileSource, SourceType]:
     if override is not None:
         return override, settings.file_source
-    if settings.file_source == "local":
+    if settings.file_source is SourceType.LOCAL:
         logger.info("Demo mode: reading folders under %s", settings.local_folder.resolve())
         local = LocalFolderSource(
             settings.local_folder,
             max_file_bytes=settings.max_file_bytes,
             max_items=settings.max_listed_files,
         )
-        return local, "local"
+        return local, SourceType.LOCAL
     api_key = settings.google_api_key.get_secret_value() if settings.google_api_key else None
     if api_key is None:
         logger.warning("GOOGLE_API_KEY is not set: listing Drive folders will fail")
@@ -160,7 +160,7 @@ def _file_source(
         max_file_bytes=settings.max_file_bytes,
         max_items=settings.max_listed_files,
     )
-    return source, "google_drive"
+    return source, SourceType.GOOGLE_DRIVE
 
 
 def _configure_logging(settings: Settings) -> None:
