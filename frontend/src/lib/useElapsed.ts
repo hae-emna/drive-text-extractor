@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { MS_PER_SECOND } from './format'
 
 /** Milliseconds since the component mounted, refreshed every `intervalMs` while `running`. */
-export function useElapsed(running: boolean, intervalMs = 1000): number {
+export function useElapsed(running: boolean, intervalMs = MS_PER_SECOND): number {
   const [start] = useState(() => Date.now())
   const [now, setNow] = useState(start)
 
