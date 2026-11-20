@@ -10,5 +10,6 @@
 **/.mypy_cache
 **/.ruff_cache
 **/node_modules
-frontend/dist
+# The API image is built from the root; the web image has its own context, frontend/.
+frontend
 *.log

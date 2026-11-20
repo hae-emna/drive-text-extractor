@@ -1,0 +1,7 @@
+# Build context of the web image: sources only, the image installs and builds its own.
+node_modules
+dist
+coverage
+*.log
+.env
+.env.*

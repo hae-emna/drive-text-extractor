@@ -1,19 +1,32 @@
 # One command:   docker compose up --build        then open http://localhost:8000
 # Demo mode:     FILE_SOURCE=local docker compose up --build   (no API key, type "local:")
+#
+# Two containers: "web" (nginx) serves the page and forwards /api to "api" (FastAPI, OCR).
+# Only "web" is published; the API is reachable through it alone.
 services:
-  app:
+  api:
     build:
       context: .
+      dockerfile: backend/Dockerfile
       target: runtime
-    image: drive-text-extractor
-    ports:
-      - "${PORT:-8000}:8000"
+    image: drive-text-extractor-api
     env_file:
       - path: .env
         required: false
     environment:
       FILE_SOURCE: ${FILE_SOURCE:-google_drive}
-      # Paths inside the container, whatever a local .env says for development.
+      # Path inside the container, whatever a local .env says for development.
       LOCAL_FOLDER: /app/samples/input
-      STATIC_DIR: /app/static
+    restart: unless-stopped
+
+  web:
+    build:
+      context: frontend
+      target: runtime
+    image: drive-text-extractor-web
+    ports:
+      - "${PORT:-8000}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
