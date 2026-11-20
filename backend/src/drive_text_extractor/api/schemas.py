@@ -9,7 +9,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from drive_text_extractor.config import SourceType
 from drive_text_extractor.domain.jobs import FileStatus, FileTask, Job
+from drive_text_extractor.domain.languages import SUPPORTED_LANGUAGES
 from drive_text_extractor.domain.models import (
     ExtractionMethod,
     FolderListing,
@@ -22,18 +24,21 @@ from drive_text_extractor.domain.models import (
 EXPORT_SCHEMA_VERSION = "1.1"
 """1.1 added ``source.kind``; additive changes bump the minor version."""
 
+MAX_LINK_LENGTH = 2048
+MAX_FILES_PER_JOB = 1000
+
 # --- Requests ------------------------------------------------------------------------------
 
 
 class ListFilesRequest(BaseModel):
-    link: str = Field(min_length=1, max_length=2048)
+    link: str = Field(min_length=1, max_length=MAX_LINK_LENGTH)
     recursive: bool = False
 
 
 class StartJobRequest(BaseModel):
-    link: str = Field(min_length=1, max_length=2048)
-    file_ids: list[str] = Field(min_length=1, max_length=1000)
-    languages: list[str] = Field(default=["eng"], min_length=1, max_length=3)
+    link: str = Field(min_length=1, max_length=MAX_LINK_LENGTH)
+    file_ids: list[str] = Field(min_length=1, max_length=MAX_FILES_PER_JOB)
+    languages: list[str] = Field(default=["eng"], min_length=1, max_length=len(SUPPORTED_LANGUAGES))
     recursive: bool = False
 
 
@@ -120,7 +125,7 @@ class JobOut(BaseModel):
 
 
 class SourceOut(BaseModel):
-    type: Literal["google_drive", "local"]
+    type: SourceType
     kind: LinkKind
     link: str
     folder: FolderOut
@@ -148,7 +153,7 @@ class LanguageOut(BaseModel):
 class HealthOut(BaseModel):
     status: Literal["ok"] = "ok"
     version: str
-    source: Literal["google_drive", "local"]
+    source: SourceType
     languages: list[LanguageOut]
 
 
@@ -231,9 +236,7 @@ def job_out(job: Job, *, low_confidence_below: float) -> JobOut:
     )
 
 
-def export_out(
-    job: Job, *, source_type: Literal["google_drive", "local"], low_confidence_below: float
-) -> ExportOut:
+def export_out(job: Job, *, source_type: SourceType, low_confidence_below: float) -> ExportOut:
     return ExportOut(
         job_id=job.id,
         created_at=job.created_at,

@@ -12,16 +12,22 @@ from drive_text_extractor.domain.models import (
     PageText,
 )
 from drive_text_extractor.domain.ports import OcrEngine
+from drive_text_extractor.domain.units import PIXELS_PER_MEGAPIXEL
 from drive_text_extractor.ocr.preprocess import prepare_for_ocr
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 JPEG_SIGNATURE = b"\xff\xd8\xff"
 
+DEFAULT_MAX_MEGAPIXELS = 50
+"""Larger images are refused before decoding (decompression-bomb guard)."""
+
 
 class ImageExtractor:
     media_types = frozenset({"image/png", "image/jpeg"})
 
-    def __init__(self, ocr: OcrEngine, *, max_pixels: int = 50_000_000) -> None:
+    def __init__(
+        self, ocr: OcrEngine, *, max_pixels: int = DEFAULT_MAX_MEGAPIXELS * PIXELS_PER_MEGAPIXEL
+    ) -> None:
         self._ocr = ocr
         self._max_pixels = max_pixels
 
@@ -51,7 +57,7 @@ class ImageExtractor:
             image.close()
             raise ImageTooLargeError(
                 f"This image is {width} x {height} pixels; "
-                f"the limit is {self._max_pixels / 1_000_000:g} megapixels."
+                f"the limit is {self._max_pixels / PIXELS_PER_MEGAPIXEL:g} megapixels."
             )
         try:
             image.load()

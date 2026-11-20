@@ -10,9 +10,12 @@ from drive_text_extractor.domain.errors import DomainError
 from drive_text_extractor.domain.jobs import Failure, FileTask, Job
 from drive_text_extractor.domain.models import ExtractionOptions, ExtractionResult, SourceFile
 from drive_text_extractor.domain.ports import FileSource
+from drive_text_extractor.domain.units import MS_PER_SECOND
 from drive_text_extractor.services.router import ExtractorRouter
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_CONCURRENCY = 2
 
 UNEXPECTED_FAILURE = Failure(
     code="internal_error",
@@ -37,7 +40,7 @@ class BatchRunner:
         source: FileSource,
         router: ExtractorRouter,
         *,
-        concurrency: int = 2,
+        concurrency: int = DEFAULT_CONCURRENCY,
         clock: Callable[[], float] = time.perf_counter,
         now: Callable[[], datetime] = _utc_now,
     ) -> None:
@@ -91,4 +94,4 @@ class BatchRunner:
         return await asyncio.to_thread(extractor.extract, data, options)
 
     def _since(self, started: float) -> int:
-        return round((self._clock() - started) * 1000)
+        return round((self._clock() - started) * MS_PER_SECOND)

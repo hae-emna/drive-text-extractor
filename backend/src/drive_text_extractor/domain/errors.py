@@ -5,7 +5,9 @@ Every failure a user can run into has its own exception. ``code`` is stable and 
 never contains internals. Anything that is *not* a ``DomainError`` is a bug.
 """
 
-from typing import ClassVar
+from typing import ClassVar, Self
+
+from drive_text_extractor.domain.units import BYTES_PER_MB
 
 
 class DomainError(Exception):
@@ -62,6 +64,15 @@ class SourceNotConfiguredError(SourceError):
 class FileTooLargeError(SourceError):
     code = "file_too_large"
     default_message = "This file is larger than the configured size limit."
+
+    @classmethod
+    def over_limit(cls, limit_bytes: int, size_bytes: int | None = None) -> Self:
+        """``size_bytes`` is None when a download is stopped as soon as it passes the limit."""
+        limit_mb = limit_bytes / BYTES_PER_MB
+        if size_bytes is None:
+            return cls(f"This file is larger than the {limit_mb:g} MB limit.")
+        size_mb = size_bytes / BYTES_PER_MB
+        return cls(f"This file is {size_mb:.1f} MB; the limit is {limit_mb:g} MB.")
 
 
 # --- Extraction errors: turning bytes into text --------------------------------------------

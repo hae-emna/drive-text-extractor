@@ -4,6 +4,7 @@ import asyncio
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
+from http import HTTPStatus
 from typing import Any
 
 import httpx
@@ -19,6 +20,7 @@ from drive_text_extractor.domain.errors import (
     SourceUnavailableError,
 )
 from drive_text_extractor.domain.models import FolderListing, LinkKind, SkippedFile, SourceFile
+from drive_text_extractor.domain.ports import DEFAULT_MAX_LISTED_FILES
 from drive_text_extractor.drive.links import DriveLink, is_valid_id, parse_drive_link
 
 API_ROOT = "https://www.googleapis.com/drive/v3"
@@ -30,6 +32,8 @@ _ITEM_FIELDS = (
     "shortcutDetails(targetId,targetMimeType,targetResourceKey)"
 )
 _MAX_REMEMBERED_KEYS = 10_000
+_MAX_PAGE_SIZE = 1000
+"""The most files Drive's files.list returns in one page."""
 _AUTOMATED_TRAFFIC_MESSAGE = (
     "Google is temporarily blocking downloads from this server's network as automated traffic. "
     "Wait a few minutes, or run the app from another network, and try again."
@@ -82,8 +86,8 @@ class GoogleDriveSource:
         api_key: str | None,
         *,
         max_file_bytes: int,
-        max_items: int = 1000,
-        page_size: int = 1000,
+        max_items: int = DEFAULT_MAX_LISTED_FILES,
+        page_size: int = _MAX_PAGE_SIZE,
         retry: RetryPolicy | None = None,
         sleep: Sleep = asyncio.sleep,
     ) -> None:
@@ -153,7 +157,7 @@ class GoogleDriveSource:
     async def download(self, file: SourceFile) -> bytes:
         limit = self._max_file_bytes
         if file.size_bytes is not None and file.size_bytes > limit:
-            raise FileTooLargeError(_too_large(file.size_bytes, limit))
+            raise FileTooLargeError.over_limit(limit, file.size_bytes)
         if not is_valid_id(file.id):
             raise FileNotAccessibleError()
 
@@ -169,7 +173,7 @@ class GoogleDriveSource:
             async for chunk in response.aiter_bytes():
                 received += chunk
                 if len(received) > limit:
-                    raise FileTooLargeError(_too_large(None, limit))
+                    raise FileTooLargeError.over_limit(limit)
         except httpx.TransportError as exc:
             raise SourceUnavailableError("The download was interrupted. Try again.") from exc
         finally:
@@ -289,20 +293,21 @@ def _classify(response: httpx.Response, not_found: type[SourceError]) -> tuple[S
     """Map a Drive error response onto the domain taxonomy. Returns (error, retryable)."""
     status = response.status_code
     reasons = _error_reasons(response)
-    if status == 429 or reasons & _RATE_LIMIT_REASONS:
+    if status == HTTPStatus.TOO_MANY_REQUESTS or reasons & _RATE_LIMIT_REASONS:
         return RateLimitedError(), True
     for reason in reasons:
         if reason in _CONFIG_MESSAGES:
             return SourceNotConfiguredError(_CONFIG_MESSAGES[reason]), False
     if "cannotDownloadFile" in reasons:
         return FileNotAccessibleError("The owner has disabled downloads for this file."), False
-    if status == 403 and response.headers.get("content-type", "").startswith("text/html"):
+    is_html = response.headers.get("content-type", "").startswith("text/html")
+    if status == HTTPStatus.FORBIDDEN and is_html:
         # Drive API errors are JSON. An HTML 403 is Google's "automated queries" page: it blocks
         # the server's network for a while, whatever the file, so retrying at once is pointless.
         return RateLimitedError(_AUTOMATED_TRAFFIC_MESSAGE), False
-    if status in {401, 403, 404}:
+    if status in {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN, HTTPStatus.NOT_FOUND}:
         return not_found(), False
-    if status >= 500:
+    if status >= HTTPStatus.INTERNAL_SERVER_ERROR:
         return SourceUnavailableError(), True
     return SourceUnavailableError(f"Google Drive rejected the request (HTTP {status})."), False
 
@@ -350,10 +355,3 @@ def _listing(
         skipped=tuple(skipped),
         truncated=truncated,
     )
-
-
-def _too_large(size: int | None, limit: int) -> str:
-    limit_mb = limit / 1_000_000
-    if size is None:
-        return f"This file is larger than the {limit_mb:g} MB limit."
-    return f"This file is {size / 1_000_000:.1f} MB; the limit is {limit_mb:g} MB."

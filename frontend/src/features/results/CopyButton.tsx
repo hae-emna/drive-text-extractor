@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/Button'
 
+/** How long the button says "Copied" before going back to its label. */
+const COPIED_FEEDBACK_MS = 2000
+
 export function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!copied) return
-    const timer = setTimeout(() => setCopied(false), 2000)
+    const timer = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS)
     return () => clearTimeout(timer)
   }, [copied])
 

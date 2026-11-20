@@ -4,11 +4,36 @@ Every tunable is read here, once, from environment variables or an optional ``.e
 The rest of the code receives a ``Settings`` instance and never touches ``os.environ``.
 """
 
+from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from drive_text_extractor.domain.ports import DEFAULT_MAX_LISTED_FILES
+from drive_text_extractor.domain.units import BYTES_PER_MB, PIXELS_PER_MEGAPIXEL
+from drive_text_extractor.extractors.image import DEFAULT_MAX_MEGAPIXELS
+from drive_text_extractor.extractors.pdf import (
+    DEFAULT_MAX_PAGES,
+    DEFAULT_MIN_TEXT_CHARS,
+    DEFAULT_RENDER_DPI,
+)
+from drive_text_extractor.ocr.tesseract import DEFAULT_TIMEOUT_SECONDS
+from drive_text_extractor.services.batch_runner import DEFAULT_CONCURRENCY
+
+
+class SourceType(StrEnum):
+    """Where folders are read from."""
+
+    GOOGLE_DRIVE = "google_drive"
+    LOCAL = "local"
+    """A folder on the server: a demo mode that needs no API key."""
+
+
+class OcrEngineName(StrEnum):
+    RAPIDOCR = "rapidocr"
+    TESSERACT = "tesseract"
 
 
 class Settings(BaseSettings):
@@ -19,7 +44,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    file_source: Literal["google_drive", "local"] = "google_drive"
+    file_source: SourceType = SourceType.GOOGLE_DRIVE
     """Where folders are read from. 'local' is a demo mode that needs no API key."""
 
     google_api_key: SecretStr | None = None
@@ -34,7 +59,7 @@ class Settings(BaseSettings):
     """Built web page to serve at ``/``. Unset during development, when Vite serves it."""
 
     # --- Batch processing ---
-    batch_concurrency: int = Field(default=2, ge=1, le=16)
+    batch_concurrency: int = Field(default=DEFAULT_CONCURRENCY, ge=1, le=16)
     """Files processed at the same time. OCR is CPU-bound: keep it near the number of cores."""
 
     low_confidence_threshold: float = Field(default=60.0, ge=0, le=100)
@@ -44,29 +69,29 @@ class Settings(BaseSettings):
     max_file_size_mb: int = Field(default=25, ge=1, le=500)
     """Files above this size are refused before (or while) downloading."""
 
-    max_listed_files: int = Field(default=1000, ge=1)
+    max_listed_files: int = Field(default=DEFAULT_MAX_LISTED_FILES, ge=1)
     """Listing stops after this many files and the folder is flagged as truncated."""
 
     # --- Extraction limits ---
-    max_pdf_pages: int = Field(default=200, ge=1)
+    max_pdf_pages: int = Field(default=DEFAULT_MAX_PAGES, ge=1)
     """PDFs with more pages are refused, to bound processing time per file."""
 
-    pdf_ocr_min_chars: int = Field(default=20, ge=0)
+    pdf_ocr_min_chars: int = Field(default=DEFAULT_MIN_TEXT_CHARS, ge=0)
     """PDF pages whose text layer has fewer visible characters are treated as scans and OCR'd."""
 
-    pdf_render_dpi: int = Field(default=300, ge=72, le=600)
+    pdf_render_dpi: int = Field(default=DEFAULT_RENDER_DPI, ge=72, le=600)
     """Resolution at which scanned PDF pages are rendered for OCR."""
 
-    max_image_megapixels: int = Field(default=50, ge=1)
+    max_image_megapixels: int = Field(default=DEFAULT_MAX_MEGAPIXELS, ge=1)
     """Images above this size are refused before decoding (decompression-bomb guard)."""
 
-    ocr_timeout_seconds: int = Field(default=120, ge=5)
+    ocr_timeout_seconds: int = Field(default=DEFAULT_TIMEOUT_SECONDS, ge=5)
     """Tesseract is stopped if one image or page takes longer than this."""
 
     ocr_auto_rotate: bool = True
     """Detect and fix sideways or upside-down scans before OCR (costs one extra Tesseract pass)."""
 
-    image_ocr_engine: Literal["rapidocr", "tesseract"] = "rapidocr"
+    image_ocr_engine: OcrEngineName = OcrEngineName.RAPIDOCR
     """Engine for PNG and JPEG files. RapidOCR finds text anywhere in photos and screenshots and
     reads English and French; images in other languages, and scanned PDF pages, use Tesseract."""
 
@@ -76,4 +101,8 @@ class Settings(BaseSettings):
 
     @property
     def max_file_bytes(self) -> int:
-        return self.max_file_size_mb * 1_000_000
+        return self.max_file_size_mb * BYTES_PER_MB
+
+    @property
+    def max_image_pixels(self) -> int:
+        return self.max_image_megapixels * PIXELS_PER_MEGAPIXEL

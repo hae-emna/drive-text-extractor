@@ -45,7 +45,12 @@ select = [
     "RUF",      # ruff-specific
     "ASYNC",    # async pitfalls
     "PT",       # pytest style
+    "PLR2004",  # magic numbers in comparisons: name them
 ]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests compare results against literal expected values on purpose.
+"tests/**" = ["PLR2004"]
 
 [tool.mypy]
 strict = true

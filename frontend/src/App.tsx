@@ -7,7 +7,7 @@ import { Spinner } from './components/Spinner'
 import { BatchProgress } from './features/batch/BatchProgress'
 import { DEFAULT_LANGUAGES, usableLanguages } from './features/batch/languages'
 import { LanguagePicker } from './features/batch/LanguagePicker'
-import { useBatchJob } from './features/batch/useBatchJob'
+import { POLL_INTERVAL_MS, useBatchJob } from './features/batch/useBatchJob'
 import { useHealth } from './features/batch/useHealth'
 import { FileTable } from './features/folder/FileTable'
 import { LinkForm } from './features/folder/LinkForm'
@@ -21,7 +21,7 @@ interface AppProps {
   pollIntervalMs?: number
 }
 
-export default function App({ pollIntervalMs = 1000 }: AppProps) {
+export default function App({ pollIntervalMs = POLL_INTERVAL_MS }: AppProps) {
   const health = useHealth()
   const { state: listing, load } = useFolderListing()
   const batch = useBatchJob(pollIntervalMs)

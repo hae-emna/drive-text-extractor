@@ -15,6 +15,8 @@ enlarging them costs time and can move text out of the size range Tesseract read
 
 MAX_UPSCALE = 3.0
 
+_OPAQUE_WHITE = (255, 255, 255, 255)
+
 
 def prepare_for_ocr(image: Image.Image) -> Image.Image:
     prepared = ImageOps.exif_transpose(image)
@@ -30,7 +32,7 @@ def _flatten_transparency(image: Image.Image) -> Image.Image:
     if not has_alpha and not (image.mode == "P" and "transparency" in image.info):
         return image
     rgba = image.convert("RGBA")
-    background = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+    background = Image.new("RGBA", rgba.size, _OPAQUE_WHITE)
     return Image.alpha_composite(background, rgba)
 
 

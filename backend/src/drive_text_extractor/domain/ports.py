@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     # library) keeps OCR engines interchangeable without inventing an image abstraction.
     from PIL.Image import Image
 
+DEFAULT_MAX_LISTED_FILES = 1000
+"""File sources stop listing after this many files and flag the listing as truncated."""
+
 
 class FileSource(Protocol):
     """Somewhere files can be listed and downloaded from.

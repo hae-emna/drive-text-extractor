@@ -16,8 +16,10 @@ export interface BatchJob {
   reset: () => void
 }
 
+export const POLL_INTERVAL_MS = 1000
+
 /** Starts a batch and follows it by polling until every file is final. */
-export function useBatchJob(pollIntervalMs = 1000): BatchJob {
+export function useBatchJob(pollIntervalMs = POLL_INTERVAL_MS): BatchJob {
   const [job, setJob] = useState<Job | null>(null)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
