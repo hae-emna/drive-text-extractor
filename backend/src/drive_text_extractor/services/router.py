@@ -24,7 +24,10 @@ class ExtractorRouter:
 
     @property
     def supported_media_types(self) -> frozenset[str]:
-        return frozenset().union(*(extractor.media_types for extractor in self._extractors))
+        media_types: set[str] = set()
+        for extractor in self._extractors:
+            media_types |= extractor.media_types
+        return frozenset(media_types)
 
     def supports(self, media_type: str) -> bool:
         return media_type in self.supported_media_types
