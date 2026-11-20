@@ -250,14 +250,52 @@ The export wraps the files with `schema_version`, `job_id`, timestamps, `languag
 
 ## Next steps
 
-1. **Queue and storage:** jobs in Redis or a database with separate workers, so processing scales
-   and survives restarts.
-2. **Better Arabic OCR:** a small labelled set to compare Tesseract's `tessdata_best` with
-   RapidOCR's Arabic model, behind the `OcrEngine` port.
-3. **Result cache** keyed by file id, modified time, languages and pipeline version.
-4. **Push progress** with server-sent events instead of polling the whole job.
-5. **Authentication and quotas**, structured logs and metrics.
-6. **More inputs:** export Google Workspace files to PDF; layout-aware extraction for tables.
+**Towards production**
+
+1. **Queue and storage:** jobs in Redis or Postgres with separate workers, so processing scales
+   and survives restarts. The OCR worker gets its own image, and the API image drops to a fraction
+   of today's 1 GB.
+2. **Isolate parsing and OCR** in worker processes with a hard time limit, so a malformed PDF or a
+   slow image cannot crash or hold up the server (PDFium is not thread-safe, #16).
+3. **Incremental runs:** process only the files added or changed since the last run, with a result
+   cache keyed by file id, modified time, languages and pipeline version.
+4. **Operations:** service-account access to private shared drives, authentication and quotas,
+   structured logs and metrics, and server-sent events instead of polling.
+
+**Better OCR**
+
+5. **Measure before tuning:** a labelled set of scans, photos, screenshots and bilingual pages,
+   scored in CI by character error rate and by the share of lines missed, so every change below
+   is judged on numbers.
+6. **Catch missed text:** compare the text regions the detector finds with the lines actually
+   recognised, and flag pages where inked regions produced nothing. Confidence alone cannot see
+   this (the Arabic sample loses its title line at 92%).
+7. **Mixed French and Arabic pages,** common in Tunisian documents: detect the script of each line
+   and read it with the matching model, instead of one language choice for the whole batch.
+8. **Do not trust every text layer:** detect broken ones (garbled encodings, a scanner's own poor
+   OCR) and OCR the page instead; OCR the pictures inside typed pages and merge them by position.
+9. **Better input images:** small-angle deskew, adaptive binarisation for faint scans, perspective
+   correction for phone photos (OpenCV is already installed), and a blur and resolution check that
+   warns before OCR. For scanned PDFs, read the embedded image at its own resolution instead of
+   rendering the page.
+10. **Arabic:** compare Tesseract's `tessdata_best` with RapidOCR's Arabic model, using a
+    permissively licensed bidi implementation (ICU) rather than the LGPL `python-bidi`; fine-tune
+    on the fonts of real documents only if the numbers call for it.
+11. **Word positions in the export:** a box and a confidence per word, so the page can highlight
+    doubtful words and later steps (fields, redaction) can use positions.
+12. **A heavier model for the hard cases only:** a self-hosted vision-language model behind the
+    `OcrEngine` port, called for low-confidence pages, once its licence is checked (many open-weight
+    OCR models forbid commercial use).
+
+**Beyond raw text**
+
+13. **Classify documents and extract fields:** invoice, contract, receipt or delivery note, then
+    fields such as number, date and total into a JSON schema with a confidence per field.
+14. **Review queue** for low-confidence results, where corrections are saved and grow the
+    evaluation set.
+15. **Layout and more inputs:** reading order on multi-column pages, table structure, and Google
+    Workspace files exported to PDF.
+16. **Typed contract:** generate the TypeScript types from the OpenAPI schema.
 
 ## Licence
 
