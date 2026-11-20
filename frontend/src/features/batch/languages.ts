@@ -16,7 +16,9 @@ export function usableLanguages(
   chosen: readonly LanguageCode[],
   offered: readonly Language[],
 ): LanguageCode[] {
-  const installed = offered.filter((language) => language.installed).map((l) => l.code)
+  const installed = offered
+    .filter((language) => language.installed)
+    .map((language) => language.code)
   const usable = chosen.filter((code) => installed.includes(code))
   return usable.length > 0 ? usable : installed.slice(0, 1)
 }

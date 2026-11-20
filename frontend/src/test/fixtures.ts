@@ -60,8 +60,9 @@ export function result(
 }
 
 export function job(files: FileResult[], overrides: Partial<Job> = {}): Job {
-  const count = (status: FileResult['status']) => files.filter((f) => f.status === status).length
-  const finished = files.every((f) => ['done', 'failed', 'cancelled'].includes(f.status))
+  const count = (status: FileResult['status']) =>
+    files.filter((file) => file.status === status).length
+  const finished = files.every((file) => ['done', 'failed', 'cancelled'].includes(file.status))
   return {
     id: 'job-1',
     status: finished ? 'finished' : 'running',

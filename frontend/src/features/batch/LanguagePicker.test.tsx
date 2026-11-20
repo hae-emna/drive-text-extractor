@@ -34,7 +34,10 @@ describe('LanguagePicker', () => {
   })
 
   it('disables languages whose pack is not installed', () => {
-    const languages = DEFAULT_LANGUAGES.map((l) => ({ ...l, installed: l.code !== 'ara' }))
+    const languages = DEFAULT_LANGUAGES.map((language) => ({
+      ...language,
+      installed: language.code !== 'ara',
+    }))
     render(<Harness languages={languages} />)
 
     expect(screen.getByLabelText('Arabic')).toBeDisabled()
