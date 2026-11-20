@@ -117,9 +117,10 @@ How SOLID shows up, without frameworks or abstract factories:
 
 - **Single responsibility.** The Drive client only lists and downloads, the router only picks an
   extractor, the runner only runs a batch, and the routes only translate HTTP.
-- **Open/closed.** An extractor declares the types it handles, so a new format is a new class plus
-  one line in `main.py`; `test_router_extension.py` adds a WebP extractor that way. RapidOCR came
-  in as a second OCR engine without changing any extractor or service (#46).
+- **Open/closed.** On the backend, an extractor declares the types it handles, so a new format is
+  a new class plus one line in `main.py`; `test_router_extension.py` adds a WebP extractor that way.
+  The page's wording and the skip messages still name PDF, PNG and JPEG. RapidOCR came in as a
+  second OCR engine without changing any extractor or service (#46).
 - **Liskov substitution.** `test_contract.py` runs one suite against every extractor: same result
   shape, no overlapping detection, only `ExtractionError` on bad input.
 - **Interface segregation.** Three small protocols in `domain/ports.py` (`FileSource`,
@@ -168,7 +169,7 @@ What happens to one file in a batch:
 | Backend | Python 3.13, **FastAPI** | The PDF and OCR ecosystem is Python-first; FastAPI is async for Drive I/O, typed with Pydantic, and documents itself (OpenAPI) | Node.js: weaker PDF and OCR libraries |
 | PDF | **pypdfium2** (Apache-2.0 / BSD-3) | PDFium is robust on real files, and one library both reads the text layer and renders pages for OCR | PyMuPDF (AGPL-3.0), pdf2image + Poppler (GPL) |
 | OCR, pages | **Tesseract 5** (Apache-2.0) | Self-hosted, French and Arabic models, per-word confidence, orientation detection; its page layout analysis suits scans | Paid cloud OCR |
-| OCR, photos | **RapidOCR** (Apache-2.0): PP-OCRv5 models on ONNX Runtime | Tesseract finds little text in photos and screenshots (on a café screenshot: `21:09 4 all > GD`); a text detector found six lines of it at 96%, and keeps French accents. About 1 s per image on a CPU | EasyOCR (PyTorch, much heavier) |
+| OCR, photos | **RapidOCR** (Apache-2.0): PP-OCRv5 models on ONNX Runtime | Tesseract segments a page into blocks and finds little of the scattered text in photos and screenshots; a text detector looks for each line wherever it is, and keeps French accents. About 1 s per image on a CPU | EasyOCR (PyTorch, much heavier) |
 | Drive | **Drive API v3 + API key**, httpx | Official and stable, returns name, type and size; no OAuth for public links. The key stays on the server | Scraping Drive's pages (fragile, against the terms of service) |
 | Async | Background tasks in the process + **polling** | The simplest way to get live per-file progress; extraction runs in a thread pool with bounded concurrency | Celery/Redis (a production step) |
 | Frontend | **React + TypeScript**, Vite, Tailwind | The page holds real state (selection, live statuses, results); typed components and pure helpers keep it testable | Plain JavaScript |
@@ -237,7 +238,10 @@ The export wraps the files with `schema_version`, `job_id`, timestamps, `languag
 - **Arabic OCR is the weakest path.** Tesseract can skip whole Arabic lines while still reporting
   high confidence on the lines it reads (`avis-arabe.png` loses its title). Selecting Arabic also
   sends images to Tesseract, as RapidOCR's Arabic model needs an LGPL dependency.
-- **Confidence measures what was read, not what was missed.** The page says so next to the score.
+- **Confidence measures what was read, not what was missed**, and the two engines do not score on
+  the same scale: Tesseract's is a mean over words, RapidOCR's a recogniser score weighted by line
+  length. One threshold (`LOW_CONFIDENCE_THRESHOLD`) flags both, so RapidOCR can rate a misread line
+  highly. Per-engine thresholds come with the evaluation set (*Next steps*).
 - **Jobs live in memory**, in a single process: lost on restart, and finished jobs are evicted after 100.
 - **No authentication or rate limiting** on the app itself: anyone who can reach it uses its
   Drive quota.
