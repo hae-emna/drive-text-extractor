@@ -97,22 +97,38 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      - name: Build the runtime image
+      # Built here rather than by compose to use the GitHub Actions layer cache; the tags are the
+      # image names in docker-compose.yml, so compose runs exactly these images.
+      - name: Build the API image
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: backend/Dockerfile
           target: runtime
-          tags: drive-text-extractor:ci
+          tags: drive-text-extractor-api
           load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
 
-      - name: Start the app in demo mode
-        run: docker run -d --name app -p 8000:8000 -e FILE_SOURCE=local drive-text-extractor:ci
+      - name: Build the web image
+        uses: docker/build-push-action@v7
+        with:
+          context: frontend
+          target: runtime
+          tags: drive-text-extractor-web
+          load: true
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
 
+      - name: Start both containers in demo mode
+        run: docker compose up --no-build --wait
+        env:
+          FILE_SOURCE: local
+
+      # Goes through nginx, so it checks the /api forwarding as well as the API.
       - name: Smoke test
         run: python3 scripts/smoke_test.py http://localhost:8000
 
       - name: Show logs on failure
         if: failure()
-        run: docker logs app
+        run: docker compose logs

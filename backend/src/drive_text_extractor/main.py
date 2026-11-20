@@ -9,7 +9,6 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from drive_text_extractor import __version__
 from drive_text_extractor.api.errors import install_error_handlers
@@ -85,9 +84,6 @@ def create_app(
     )
     install_error_handlers(app)
     app.include_router(router, prefix="/api")
-    if settings.static_dir is not None and settings.static_dir.is_dir():
-        # Mounted last so /api routes take precedence over files.
-        app.mount("/", StaticFiles(directory=settings.static_dir, html=True), name="web")
     return app
 
 

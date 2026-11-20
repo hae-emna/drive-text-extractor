@@ -87,7 +87,7 @@ The checks CI runs, from the repository root:
 ```bash
 (cd backend && uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest)
 (cd frontend && npm run lint && npm run format:check && npm run typecheck && npm test && npm run build)
-docker build --target test -t dte-test . && docker run --rm dte-test   # backend tests with real Tesseract
+docker build -f backend/Dockerfile --target test -t dte-test . && docker run --rm dte-test   # backend tests with real Tesseract
 ```
 
 Tests that need Tesseract are skipped when it is not installed. Git hooks (ruff, hygiene,
@@ -97,7 +97,7 @@ Conventional Commits): `uvx pre-commit install`.
 
 ```mermaid
 flowchart LR
-    UI["Web page<br/>React + TypeScript"] -- "JSON over /api" --> API["FastAPI routes"]
+    UI["Web page<br/>React + TypeScript"] -- "JSON over /api,<br/>through nginx" --> API["FastAPI routes"]
     API --> FB[FolderBrowser]
     API --> JS[JobService] --> BR[BatchRunner]
     FB --> FS{{"FileSource"}}
@@ -173,7 +173,7 @@ What happens to one file in a batch:
 | Drive | **Drive API v3 + API key**, httpx | Official and stable, returns name, type and size; no OAuth for public links. The key stays on the server | Scraping Drive's pages (fragile, against the terms of service) |
 | Async | Background tasks in the process + **polling** | The simplest way to get live per-file progress; extraction runs in a thread pool with bounded concurrency | Celery/Redis (a production step) |
 | Frontend | **React + TypeScript**, Vite, Tailwind | The page holds real state (selection, live statuses, results); typed components and pure helpers keep it testable | Plain JavaScript |
-| Packaging | **Docker** multi-stage, compose | Tesseract is a system binary, so Docker is the honest "one command"; one origin serves the API and the page | |
+| Packaging | **Docker** compose, one container per service | Tesseract is a system binary, so Docker is the honest "one command". `web` (nginx) serves the page and forwards `/api` to `api` (FastAPI and the OCR engines), so the browser sees one origin and needs no CORS; each image rebuilds and restarts on its own | One image serving both |
 
 Licences of every dependency, and the alternatives rejected for licence reasons:
 [LICENSES.md](LICENSES.md).
@@ -220,16 +220,16 @@ The export wraps the files with `schema_version`, `job_id`, timestamps, `languag
 
 - **Tests:** 284 backend (extractor contract tests, a fake Drive API over `httpx.MockTransport`,
   API tests through the real routes, real Tesseract and RapidOCR runs) and 87 frontend
-  (components and the full flow against a fake backend). CI also builds the Docker image and runs
-  [`scripts/smoke_test.py`](scripts/smoke_test.py) against it.
+  (components and the full flow against a fake backend). CI also builds both Docker images,
+  starts them with compose and runs [`scripts/smoke_test.py`](scripts/smoke_test.py) through nginx.
 - **Bugs found this way, kept as regression tests:** PDFium is not thread-safe and crashed the
   process under parallel extraction (#16); Tesseract reports orientation clockwise while Pillow
   rotates counter-clockwise (#12); upscaling images already at scan resolution degraded OCR
   (#28).
 - **Security:** the API key travels in a header and never reaches the browser; the server never
   fetches the user's URL, it builds Drive URLs from a validated id; downloads, image pixels and
-  PDF pages are capped; the container runs as a non-root user; `.env` stays out of Git and of
-  the Docker build context.
+  PDF pages are capped; both containers run as non-root users and only the web one is published;
+  `.env` stays out of Git and of the Docker build contexts.
 - **Git:** one issue, branch and pull request per change, Conventional Commits enforced by a
   hook, and each pull request merged after CI passed.
 
@@ -250,7 +250,7 @@ The export wraps the files with `schema_version`, `job_id`, timestamps, `languag
 - **Text only:** no tables or layout. A page counts as scanned below a character threshold, so a
   page with a real text layer and a picture of more text keeps only the text layer.
 - **Not supported:** Google Docs, Sheets and Slides (skipped), folder shortcuts.
-- **The Docker image is about 1 GB**, mostly OpenCV, ONNX Runtime and NumPy for RapidOCR.
+- **The API image is about 1 GB**, mostly OpenCV, ONNX Runtime and NumPy for RapidOCR.
 
 ## Next steps
 

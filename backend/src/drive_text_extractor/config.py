@@ -55,9 +55,6 @@ class Settings(BaseSettings):
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
-    static_dir: Path | None = None
-    """Built web page to serve at ``/``. Unset during development, when Vite serves it."""
-
     # --- Batch processing ---
     batch_concurrency: int = Field(default=DEFAULT_CONCURRENCY, ge=1, le=16)
     """Files processed at the same time. OCR is CPU-bound: keep it near the number of cores."""
