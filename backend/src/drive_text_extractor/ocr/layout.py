@@ -71,9 +71,7 @@ def arrange(lines: Sequence[TextLine]) -> str:
     for row in rows:
         if previous is not None and _top(row) - _bottom(previous) > PARAGRAPH_GAP * typical_height:
             parts.append("")
-        parts.append(
-            " ".join(line.text.strip() for line in sorted(row, key=lambda line: line.left))
-        )
+        parts.append(_row_text(row))
         previous = row
     return "\n".join(parts)
 
@@ -81,26 +79,32 @@ def arrange(lines: Sequence[TextLine]) -> str:
 def mean_confidence(lines: Sequence[TextLine]) -> float | None:
     """Recognition confidence (0-100), weighted by length so a stray symbol weighs little."""
     weighted = [(len(line.text.strip()), line.score) for line in lines if line.text.strip()]
-    total = sum(length for length, _ in weighted)
-    if total == 0:
+    total_length = sum(length for length, _ in weighted)
+    if total_length == 0:
         return None
-    return round(100 * sum(length * score for length, score in weighted) / total, 1)
+    weighted_score = sum(length * score for length, score in weighted)
+    return round(100 * weighted_score / total_length, 1)
 
 
 def _group_into_rows(lines: Sequence[TextLine]) -> list[list[TextLine]]:
     rows: list[list[TextLine]] = []
-    for line in sorted(lines, key=lambda line: line.middle):
+    top_to_bottom = sorted(lines, key=lambda line: line.middle)
+    for line in top_to_bottom:
         if rows:
             row = rows[-1]
             centre = fmean(member.middle for member in row)
-            tolerance = SAME_ROW_TOLERANCE * min(
-                line.height, median(member.height for member in row)
-            )
+            row_height = median(member.height for member in row)
+            tolerance = SAME_ROW_TOLERANCE * min(line.height, row_height)
             if abs(line.middle - centre) <= tolerance:
                 row.append(line)
                 continue
         rows.append([line])
     return rows
+
+
+def _row_text(row: list[TextLine]) -> str:
+    left_to_right = sorted(row, key=lambda line: line.left)
+    return " ".join(line.text.strip() for line in left_to_right)
 
 
 def _top(row: list[TextLine]) -> float:

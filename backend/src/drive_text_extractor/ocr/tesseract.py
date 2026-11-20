@@ -99,11 +99,14 @@ def mean_word_confidence(tsv: str) -> float | None:
     are empty words.
     """
     rows = csv.DictReader(io.StringIO(tsv), delimiter="\t", quoting=csv.QUOTE_NONE)
-    scores = [
-        float(row["conf"])
-        for row in rows
-        if row.get("conf") not in (None, "") and float(row["conf"]) >= 0 and row["text"].strip()
-    ]
+    scores: list[float] = []
+    for row in rows:
+        confidence = row.get("conf")
+        if not confidence:
+            continue
+        score = float(confidence)
+        if score >= 0 and row["text"].strip():
+            scores.append(score)
     return round(fmean(scores), 1) if scores else None
 
 

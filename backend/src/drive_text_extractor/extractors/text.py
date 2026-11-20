@@ -18,7 +18,12 @@ def normalize_text(raw: str) -> str:
     """
     text = unicodedata.normalize("NFKC", raw)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = "".join(char for char in text if char in "\n\t" or unicodedata.category(char) != "Cc")
+    text = "".join(char for char in text if _is_kept(char))
     text = _TRAILING_SPACES.sub("\n", text)
     text = _EXTRA_BLANK_LINES.sub("\n\n", text)
     return text.strip()
+
+
+def _is_kept(char: str) -> bool:
+    """Control characters are dropped, except newlines and tabs."""
+    return char in "\n\t" or unicodedata.category(char) != "Cc"
