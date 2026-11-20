@@ -58,9 +58,14 @@ You need Docker. The app runs on <http://localhost:8000>.
    cp .env.example .env          # then set GOOGLE_API_KEY=... in .env
    docker compose up --build
    ```
-3. Share a Drive folder or a single file as **"Anyone with the link"** and paste its link. To
-   try every path of the pipeline, upload the files from [`samples/input`](samples/input) to a
-   folder.
+3. Paste the link of a Drive folder or file shared as **"Anyone with the link"**. A public test
+   folder holding the files of [`samples/input`](samples/input) is ready to use (tick *Include
+   subfolders* to get the one in a subfolder):
+   <https://drive.google.com/drive/folders/1HvFp6xojrjdTFNgeMda4QNCwMCHfKVef>
+
+   [`samples/output-drive.json`](samples/output-drive.json) is its export with English and French
+   selected, and [`samples/output-drive-arabic.json`](samples/output-drive-arabic.json) the Arabic
+   notice read with Arabic selected.
 
 No OAuth is involved: only public folders and files are in scope, so an API key is enough.
 
@@ -73,7 +78,6 @@ FILE_SOURCE=local docker compose up --build      # PowerShell: $env:FILE_SOURCE=
 Type `local:` as the link (or `local:report-mixed.pdf` for a single file). The server reads
 [`samples/input`](samples/input), a folder in which each file exercises one path of the pipeline
 (see [its README](samples/README.md)).
-[`samples/output-demo.json`](samples/output-demo.json) is the export of that run.
 
 ## Local development
 
@@ -203,19 +207,19 @@ with codes such as `invalid_link`, `folder_not_found`, `file_not_accessible`, `r
 `corrupt_file`, `encrypted_file` and `ocr_timeout`. The server re-lists the folder before
 starting a job, so only files that really belong to it can be processed.
 
-One file from [`samples/output-demo.json`](samples/output-demo.json), a PDF with a typed page and a
-scanned page:
+One file from [`samples/output-drive.json`](samples/output-drive.json), a PDF with a typed page and
+a scanned page:
 
 ```json
 {
-  "file": { "id": "report-mixed.pdf", "name": "report-mixed.pdf", "path": "report-mixed.pdf",
+  "file": { "id": "1hgJLkDpKQkakPj2BzJDCqT18BO2O4DJd", "name": "report-mixed.pdf", "path": "report-mixed.pdf",
             "mime_type": "application/pdf", "size_bytes": 69376, "modified_time": "..." },
   "status": "done",
   "method": "mixed",
   "mean_confidence": 95.4,
   "low_confidence": false,
   "char_count": 179,
-  "duration_ms": 1628,
+  "duration_ms": 5060,
   "text": "Quarterly report Q3 2026\nTyped summary page with a text layer.\n\nANNEX A - Service levels\n...",
   "pages": [
     { "number": 1, "method": "pdf_parser", "confidence": null, "text": "Quarterly report Q3 2026\n..." },
