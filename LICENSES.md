@@ -7,8 +7,8 @@ program use.
 
 ## Runtime dependencies
 
-Versions are the ones locked in `backend/uv.lock` and `frontend/package-lock.json`, and the
-Debian package installed in the Docker image.
+Versions are the ones locked in `backend/uv.lock` and `frontend/package-lock.json`, the Debian
+package installed in the API image, and nginx's stable branch in the web image.
 
 | Dependency | Version | Licence | Commercial use | Used for |
 |---|---|---|---|---|
@@ -25,6 +25,7 @@ Debian package installed in the Docker image.
 | OpenCV, headless build | 5.1.0.95 | Apache-2.0 | Yes | Image operations of RapidOCR's text detector |
 | PP-OCRv5 models (PaddleOCR, converted to ONNX by RapidOCR) | PP-OCRv5 mobile | Apache-2.0 | Yes | Text detection, line orientation and Latin recognition, baked into the image |
 | React, React DOM | 19.3.1 | MIT | Yes | Web page |
+| nginx (`nginxinc/nginx-unprivileged` image) | stable | BSD-2-Clause | Yes | Serves the web page and forwards `/api` to the API container |
 | Tailwind CSS | 4.3.5 | MIT | Yes | Styles |
 
 Transitive dependencies are permissive (MIT, BSD, Apache-2.0, PSF-2.0), with weak-copyleft
@@ -33,6 +34,8 @@ exceptions, all used unmodified, which their licences allow in commercial produc
 - `certifi` (MPL-2.0, the CA bundle used by httpx and requests) and `tqdm` (MPL-2.0 and MIT,
   pulled in by RapidOCR).
 - Debian's `libfribidi0` (LGPL-2.1+, installed with Tesseract).
+- The base images' own system tools (Debian under the API, Alpine under nginx), some of them
+  GPL (bash, BusyBox). They are separate programs that the app neither links to nor modifies.
 - FFmpeg and libquadmath inside the OpenCV wheel, and GEOS inside the shapely wheel
   (LGPL-2.1+). They are shared libraries loaded at runtime, which a user can replace, as the
   LGPL requires.
