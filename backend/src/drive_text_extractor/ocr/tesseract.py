@@ -39,18 +39,18 @@ class TesseractEngine:
         self._auto_rotate = auto_rotate
 
     def recognize(self, image: Image, languages: Sequence[str]) -> OcrOutput:
-        lang = "+".join(languages)
+        language_spec = "+".join(languages)
         if self._auto_rotate:
             image = self.upright(image)
         try:
             # One Tesseract run produces both the plain text and the per-word TSV.
             text, tsv = pytesseract.run_and_get_multiple_output(
-                image, extensions=["txt", "tsv"], lang=lang, timeout=self._timeout
+                image, extensions=["txt", "tsv"], lang=language_spec, timeout=self._timeout
             )
         except pytesseract.TesseractNotFoundError as exc:
             raise OcrError("The OCR engine (Tesseract) is not installed on the server.") from exc
         except pytesseract.TesseractError as exc:
-            raise OcrError(_explain(exc, lang)) from exc
+            raise OcrError(_explain(exc, language_spec)) from exc
         except RuntimeError as exc:
             # pytesseract signals a timeout with a bare RuntimeError.
             if "timeout" in str(exc).lower():
@@ -64,15 +64,18 @@ class TesseractEngine:
         Public because the image OCR engine straightens its input the same way.
         """
         try:
-            osd = pytesseract.image_to_osd(
+            orientation = pytesseract.image_to_osd(
                 image, output_type=pytesseract.Output.DICT, timeout=self._timeout
             )
         except (pytesseract.TesseractError, pytesseract.TesseractNotFoundError, RuntimeError):
             # Too little text to decide, or detection failed: recognise the image as it is
             # (a missing binary is reported by the recognition call itself).
             return image
-        angle = int(osd.get("rotate", 0))
-        if angle == 0 or float(osd.get("orientation_conf", 0)) < _MIN_ORIENTATION_CONFIDENCE:
+        angle = int(orientation.get("rotate", 0))
+        if (
+            angle == 0
+            or float(orientation.get("orientation_conf", 0)) < _MIN_ORIENTATION_CONFIDENCE
+        ):
             return image
         logger.debug("Rotating image by %s degrees before OCR", angle)
         # OSD reports a clockwise correction; Pillow rotates counter-clockwise.
@@ -86,7 +89,7 @@ class TesseractEngine:
         except (pytesseract.TesseractNotFoundError, pytesseract.TesseractError, OSError):
             logger.warning("Tesseract is not available; OCR will fail")
             return []
-        return sorted(lang for lang in languages if lang != _ORIENTATION_PACK)
+        return sorted(language for language in languages if language != _ORIENTATION_PACK)
 
 
 def mean_word_confidence(tsv: str) -> float | None:
@@ -104,7 +107,7 @@ def mean_word_confidence(tsv: str) -> float | None:
     return round(fmean(scores), 1) if scores else None
 
 
-def _explain(error: pytesseract.TesseractError, lang: str) -> str:
+def _explain(error: pytesseract.TesseractError, language_spec: str) -> str:
     if "Failed loading language" in str(error.message):
-        return f"The OCR language pack '{lang}' is not installed on the server."
+        return f"The OCR language pack '{language_spec}' is not installed on the server."
     return "Text recognition failed on this file."
