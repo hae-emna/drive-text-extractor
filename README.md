@@ -7,7 +7,7 @@ Paste a public Google Drive link (a folder or a single file), pick the PDFs and 
 their text back. Each file goes through the right pipeline: a **PDF parser** for native PDFs,
 **OCR** for images and scanned PDF pages. Results are shown per file and exported as JSON.
 
-![The full flow on the public test folder: paste the link, list 8 files and 1 skipped, select all, extract with live per-file status, read the results](docs/demo.gif)
+![The full flow on the public test folder with English, French and Arabic selected: paste the link, list 8 files and 1 skipped, select all, extract with live per-file status, read the results](docs/demo.gif)
 
 - [What it does](#what-it-does) · [Quick start](#quick-start) · [Local development](#local-development)
 - [Architecture](#architecture) · [Technical choices](#technical-choices) · [API and JSON output](#api-and-json-output)
