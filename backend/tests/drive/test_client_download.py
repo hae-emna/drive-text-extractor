@@ -1,6 +1,11 @@
+import httpx
 import pytest
 
-from drive_text_extractor.domain.errors import FileNotAccessibleError, FileTooLargeError
+from drive_text_extractor.domain.errors import (
+    FileNotAccessibleError,
+    FileTooLargeError,
+    RateLimitedError,
+)
 from drive_text_extractor.domain.models import SourceFile
 from drive_text_extractor.drive.client import GoogleDriveSource
 from tests.drive.fake_drive import API_KEY, FakeDrive, drive_error
@@ -63,6 +68,20 @@ async def test_explains_when_the_owner_disabled_downloads(drive: FakeDrive) -> N
 
     with pytest.raises(FileNotAccessibleError, match="disabled downloads"):
         await make_source(drive).download(file_ref())
+
+
+async def test_reports_googles_automated_traffic_block_instead_of_a_private_file(
+    drive: FakeDrive,
+) -> None:
+    drive.add_file("FileId000001", "a.pdf", "application/pdf", ROOT, b"%PDF-1.7 body")
+    drive.then_respond(
+        httpx.Response(403, headers={"content-type": "text/html"}, text="<html>Sorry...</html>")
+    )
+
+    with pytest.raises(RateLimitedError, match="automated traffic"):
+        await make_source(drive).download(file_ref())
+
+    assert len(drive.requests) == 1  # the block lasts minutes: no immediate retry
 
 
 async def test_never_requests_a_malformed_id(drive: FakeDrive) -> None:

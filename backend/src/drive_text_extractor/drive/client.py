@@ -30,6 +30,10 @@ _ITEM_FIELDS = (
     "shortcutDetails(targetId,targetMimeType,targetResourceKey)"
 )
 _MAX_REMEMBERED_KEYS = 10_000
+_AUTOMATED_TRAFFIC_MESSAGE = (
+    "Google is temporarily blocking downloads from this server's network as automated traffic. "
+    "Wait a few minutes, or run the app from another network, and try again."
+)
 _RATE_LIMIT_REASONS = {"rateLimitExceeded", "userRateLimitExceeded", "RATE_LIMIT_EXCEEDED"}
 _CONFIG_MESSAGES = {
     "API_KEY_INVALID": "The Google Drive API key is invalid. Check GOOGLE_API_KEY.",
@@ -292,6 +296,10 @@ def _classify(response: httpx.Response, not_found: type[SourceError]) -> tuple[S
             return SourceNotConfiguredError(_CONFIG_MESSAGES[reason]), False
     if "cannotDownloadFile" in reasons:
         return FileNotAccessibleError("The owner has disabled downloads for this file."), False
+    if status == 403 and response.headers.get("content-type", "").startswith("text/html"):
+        # Drive API errors are JSON. An HTML 403 is Google's "automated queries" page: it blocks
+        # the server's network for a while, whatever the file, so retrying at once is pointless.
+        return RateLimitedError(_AUTOMATED_TRAFFIC_MESSAGE), False
     if status in {401, 403, 404}:
         return not_found(), False
     if status >= 500:
