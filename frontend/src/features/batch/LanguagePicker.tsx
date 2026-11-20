@@ -14,9 +14,13 @@ export function LanguagePicker({
   disabled = false,
 }: LanguagePickerProps) {
   function toggle(code: LanguageCode) {
-    const next = value.includes(code) ? value.filter((c) => c !== code) : [...value, code]
+    const next = value.includes(code) ? value.filter((chosen) => chosen !== code) : [...value, code]
     // Keep the canonical order so the request does not depend on click order.
-    onChange(languages.map((language) => language.code).filter((c) => next.includes(c)))
+    onChange(
+      languages
+        .map((language) => language.code)
+        .filter((languageCode) => next.includes(languageCode)),
+    )
   }
 
   return (

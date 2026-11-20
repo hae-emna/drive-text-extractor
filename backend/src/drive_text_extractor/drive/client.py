@@ -5,7 +5,7 @@ from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Any
+from typing import Any, NamedTuple
 
 import httpx
 
@@ -101,27 +101,31 @@ class GoogleDriveSource:
         self._resource_keys: dict[str, str] = {}
 
     async def list_files(self, link: str, *, recursive: bool = False) -> FolderListing:
-        ref = parse_drive_link(link)
-        self._remember_key(ref.id, ref.resource_key)
-        not_found = FileNotAccessibleError if ref.kind is LinkKind.FILE else FolderNotFoundError
+        drive_link = parse_drive_link(link)
+        self._remember_key(drive_link.id, drive_link.resource_key)
+        not_found = (
+            FileNotAccessibleError if drive_link.kind is LinkKind.FILE else FolderNotFoundError
+        )
         item = await self._get_json(
-            f"{API_ROOT}/files/{ref.id}",
+            f"{API_ROOT}/files/{drive_link.id}",
             {"fields": f"{_ITEM_FIELDS},trashed", "supportsAllDrives": "true"},
-            self._key_header(ref.id),
+            self._key_header(drive_link.id),
             not_found=not_found,
         )
         if item.get("trashed"):
             raise not_found()
         # The URL only hints at what the id is; Drive's answer decides.
         if item.get("mimeType") == FOLDER_MIME:
-            return await self._list_folder(ref, item, recursive=recursive)
+            return await self._list_folder(drive_link, item, recursive=recursive)
         return self._single_file_listing(item)
 
-    async def _list_folder(self, ref: DriveLink, folder: Json, *, recursive: bool) -> FolderListing:
+    async def _list_folder(
+        self, drive_link: DriveLink, folder: Json, *, recursive: bool
+    ) -> FolderListing:
         files: list[SourceFile] = []
         skipped: list[SkippedFile] = []
-        pending = deque([(ref.id, "")])
-        visited = {ref.id}
+        pending = deque([(drive_link.id, "")])
+        visited = {drive_link.id}
         while pending:
             folder_id, prefix = pending.popleft()
             async for item in self._children(folder_id):
@@ -150,9 +154,9 @@ class GoogleDriveSource:
                         continue
                     item = target
                 if len(files) >= self._max_items:
-                    return _listing(ref, folder, files, skipped, truncated=True)
+                    return _folder_listing(drive_link, folder, files, skipped, truncated=True)
                 files.append(_to_source_file(item, path if prefix else ""))
-        return _listing(ref, folder, files, skipped, truncated=False)
+        return _folder_listing(drive_link, folder, files, skipped, truncated=False)
 
     async def download(self, file: SourceFile) -> bytes:
         limit = self._max_file_bytes
@@ -282,34 +286,45 @@ class GoogleDriveSource:
 
             await response.aread()
             await response.aclose()
-            error, retryable = _classify(response, not_found)
-            if not retryable or is_last:
-                raise error
+            failure = _failure_for(response, not_found)
+            if not failure.retryable or is_last:
+                raise failure.error
             await self._sleep(self._retry.delay(attempt, _retry_after(response)))
         raise AssertionError("unreachable: the last attempt always returns or raises")
 
 
-def _classify(response: httpx.Response, not_found: type[SourceError]) -> tuple[SourceError, bool]:
-    """Map a Drive error response onto the domain taxonomy. Returns (error, retryable)."""
+class _DriveFailure(NamedTuple):
+    error: SourceError
+    retryable: bool
+
+
+def _failure_for(response: httpx.Response, not_found: type[SourceError]) -> _DriveFailure:
+    """Map a Drive error response onto the domain taxonomy."""
     status = response.status_code
     reasons = _error_reasons(response)
     if status == HTTPStatus.TOO_MANY_REQUESTS or reasons & _RATE_LIMIT_REASONS:
-        return RateLimitedError(), True
+        return _DriveFailure(RateLimitedError(), retryable=True)
     for reason in reasons:
         if reason in _CONFIG_MESSAGES:
-            return SourceNotConfiguredError(_CONFIG_MESSAGES[reason]), False
+            return _DriveFailure(
+                SourceNotConfiguredError(_CONFIG_MESSAGES[reason]), retryable=False
+            )
     if "cannotDownloadFile" in reasons:
-        return FileNotAccessibleError("The owner has disabled downloads for this file."), False
+        downloads_disabled = FileNotAccessibleError(
+            "The owner has disabled downloads for this file."
+        )
+        return _DriveFailure(downloads_disabled, retryable=False)
     is_html = response.headers.get("content-type", "").startswith("text/html")
     if status == HTTPStatus.FORBIDDEN and is_html:
         # Drive API errors are JSON. An HTML 403 is Google's "automated queries" page: it blocks
         # the server's network for a while, whatever the file, so retrying at once is pointless.
-        return RateLimitedError(_AUTOMATED_TRAFFIC_MESSAGE), False
+        return _DriveFailure(RateLimitedError(_AUTOMATED_TRAFFIC_MESSAGE), retryable=False)
     if status in {HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN, HTTPStatus.NOT_FOUND}:
-        return not_found(), False
+        return _DriveFailure(not_found(), retryable=False)
     if status >= HTTPStatus.INTERNAL_SERVER_ERROR:
-        return SourceUnavailableError(), True
-    return SourceUnavailableError(f"Google Drive rejected the request (HTTP {status})."), False
+        return _DriveFailure(SourceUnavailableError(), retryable=True)
+    rejected = SourceUnavailableError(f"Google Drive rejected the request (HTTP {status}).")
+    return _DriveFailure(rejected, retryable=False)
 
 
 def _error_reasons(response: httpx.Response) -> set[str]:
@@ -340,8 +355,8 @@ def _to_source_file(item: Json, path: str) -> SourceFile:
     )
 
 
-def _listing(
-    ref: DriveLink,
+def _folder_listing(
+    drive_link: DriveLink,
     folder: Json,
     files: list[SourceFile],
     skipped: list[SkippedFile],
@@ -349,7 +364,7 @@ def _listing(
     truncated: bool,
 ) -> FolderListing:
     return FolderListing(
-        folder_id=ref.id,
+        folder_id=drive_link.id,
         folder_name=folder.get("name", ""),
         files=tuple(files),
         skipped=tuple(skipped),

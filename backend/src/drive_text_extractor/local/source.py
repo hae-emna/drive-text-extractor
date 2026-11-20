@@ -57,7 +57,9 @@ class LocalFolderSource:
         pending = [folder]
         while pending:
             current = pending.pop(0)
-            for entry in sorted(current.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
+            for entry in sorted(
+                current.iterdir(), key=lambda path: (path.is_file(), path.name.lower())
+            ):
                 relative = entry.relative_to(folder).as_posix()
                 if entry.is_dir():
                     if recursive:

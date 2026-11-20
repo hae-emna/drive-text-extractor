@@ -61,7 +61,11 @@ class BatchRunner:
 
         await asyncio.gather(*(process_in_slot(task) for task in job.tasks))
         job.finished_at = self._now()
-        logger.info("Job %s finished: %s", job.id, {k.value: v for k, v in job.counts().items()})
+        logger.info(
+            "Job %s finished: %s",
+            job.id,
+            {status.value: count for status, count in job.counts().items()},
+        )
 
     async def _process(self, job: Job, task: FileTask) -> None:
         if job.cancel_requested:

@@ -13,7 +13,7 @@ from statistics import fmean, median
 
 Point = tuple[float, float]
 
-SAME_ROW = 0.5
+SAME_ROW_TOLERANCE = 0.5
 """Two lines are on the same row when their centres are closer than this share of a line height."""
 
 PARAGRAPH_GAP = 1.0
@@ -61,7 +61,7 @@ class TextLine:
 
 
 def arrange(lines: Sequence[TextLine]) -> str:
-    rows = _rows(lines)
+    rows = _group_into_rows(lines)
     if not rows:
         return ""
     typical_height = median(line.height for line in lines)
@@ -71,7 +71,9 @@ def arrange(lines: Sequence[TextLine]) -> str:
     for row in rows:
         if previous is not None and _top(row) - _bottom(previous) > PARAGRAPH_GAP * typical_height:
             parts.append("")
-        parts.append(" ".join(line.text.strip() for line in sorted(row, key=lambda x: x.left)))
+        parts.append(
+            " ".join(line.text.strip() for line in sorted(row, key=lambda line: line.left))
+        )
         previous = row
     return "\n".join(parts)
 
@@ -85,13 +87,15 @@ def mean_confidence(lines: Sequence[TextLine]) -> float | None:
     return round(100 * sum(length * score for length, score in weighted) / total, 1)
 
 
-def _rows(lines: Sequence[TextLine]) -> list[list[TextLine]]:
+def _group_into_rows(lines: Sequence[TextLine]) -> list[list[TextLine]]:
     rows: list[list[TextLine]] = []
-    for line in sorted(lines, key=lambda x: x.middle):
+    for line in sorted(lines, key=lambda line: line.middle):
         if rows:
             row = rows[-1]
             centre = fmean(member.middle for member in row)
-            tolerance = SAME_ROW * min(line.height, median(member.height for member in row))
+            tolerance = SAME_ROW_TOLERANCE * min(
+                line.height, median(member.height for member in row)
+            )
             if abs(line.middle - centre) <= tolerance:
                 row.append(line)
                 continue

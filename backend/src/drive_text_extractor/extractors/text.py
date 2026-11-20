@@ -18,7 +18,7 @@ def normalize_text(raw: str) -> str:
     """
     text = unicodedata.normalize("NFKC", raw)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = "".join(ch for ch in text if ch in "\n\t" or unicodedata.category(ch) != "Cc")
+    text = "".join(char for char in text if char in "\n\t" or unicodedata.category(char) != "Cc")
     text = _TRAILING_SPACES.sub("\n", text)
     text = _EXTRA_BLANK_LINES.sub("\n\n", text)
     return text.strip()

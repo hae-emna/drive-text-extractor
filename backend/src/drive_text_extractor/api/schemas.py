@@ -232,7 +232,9 @@ def job_out(job: Job, *, low_confidence_below: float) -> JobOut:
         folder=FolderOut(id=job.folder_id, name=job.folder_name),
         languages=list(job.options.languages),
         summary=summary_out(job),
-        files=[file_result_out(t, low_confidence_below=low_confidence_below) for t in job.tasks],
+        files=[
+            file_result_out(task, low_confidence_below=low_confidence_below) for task in job.tasks
+        ],
     )
 
 
@@ -249,5 +251,7 @@ def export_out(job: Job, *, source_type: SourceType, low_confidence_below: float
             folder=FolderOut(id=job.folder_id, name=job.folder_name),
         ),
         summary=summary_out(job),
-        files=[file_result_out(t, low_confidence_below=low_confidence_below) for t in job.tasks],
+        files=[
+            file_result_out(task, low_confidence_below=low_confidence_below) for task in job.tasks
+        ],
     )

@@ -40,7 +40,7 @@ class JobService:
         self._store = store
         self._new_id = new_id
         self._now = now
-        self._running: set[asyncio.Task[None]] = set()
+        self._background_tasks: set[asyncio.Task[None]] = set()
 
     async def start(
         self,
@@ -56,13 +56,13 @@ class JobService:
         with their authoritative metadata, can be processed: the client only sends ids.
         """
         options = ExtractionOptions(languages=validate_languages(languages))
-        wanted = list(dict.fromkeys(file_ids))
-        if not wanted:
+        wanted_ids = list(dict.fromkeys(file_ids))
+        if not wanted_ids:
             raise InvalidSelectionError()
 
         listing = await self._browser.browse(link, recursive=recursive)
-        available = {file.id: file for file in listing.files}
-        missing = [file_id for file_id in wanted if file_id not in available]
+        files_by_id = {file.id: file for file in listing.files}
+        missing = [file_id for file_id in wanted_ids if file_id not in files_by_id]
         if missing:
             raise InvalidSelectionError(
                 f"{len(missing)} selected file(s) are no longer in this folder. Reload the list."
@@ -74,13 +74,13 @@ class JobService:
             folder_id=listing.folder_id,
             folder_name=listing.folder_name,
             options=options,
-            tasks=[FileTask(available[file_id]) for file_id in wanted],
+            tasks=[FileTask(files_by_id[file_id]) for file_id in wanted_ids],
             created_at=self._now(),
             link_kind=listing.kind,
         )
         self._store.add(job)
         self._run_in_background(job)
-        logger.info("Job %s started: %d file(s), languages=%s", job.id, len(wanted), languages)
+        logger.info("Job %s started: %d file(s), languages=%s", job.id, len(wanted_ids), languages)
         return job
 
     def get(self, job_id: str) -> Job:
@@ -96,15 +96,15 @@ class JobService:
         return job
 
     async def shutdown(self) -> None:
-        for task in self._running:
+        for task in self._background_tasks:
             task.cancel()
-        await asyncio.gather(*self._running, return_exceptions=True)
+        await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
     def _run_in_background(self, job: Job) -> None:
         task = asyncio.create_task(self._runner.run(job), name=f"job-{job.id}")
         # Keep a reference: the event loop only holds weak references to tasks.
-        self._running.add(task)
-        task.add_done_callback(self._running.discard)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
         task.add_done_callback(_log_crash)
 
 

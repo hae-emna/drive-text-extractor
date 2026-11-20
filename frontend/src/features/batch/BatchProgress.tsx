@@ -44,7 +44,9 @@ export function BatchProgress({ job, onCancel }: BatchProgressProps) {
   const elapsed = useElapsed(running)
   const duration = running ? elapsed : (serverDuration(job) ?? elapsed)
   const remaining = running ? estimateRemainingMs(elapsed, finished, summary.total) : null
-  const reading = job.files.filter((r) => r.status === 'processing').map((r) => r.file.name)
+  const reading = job.files
+    .filter((result) => result.status === 'processing')
+    .map((result) => result.file.name)
 
   return (
     <div className="space-y-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
@@ -125,6 +127,6 @@ function LegendItem({ dot, text }: { dot: string; text: string }) {
 /** How long a finished job took, by the server's clock. */
 function serverDuration(job: Job): number | null {
   if (!job.finished_at) return null
-  const ms = Date.parse(job.finished_at) - Date.parse(job.created_at)
-  return Number.isFinite(ms) && ms >= 0 ? ms : null
+  const durationMs = Date.parse(job.finished_at) - Date.parse(job.created_at)
+  return Number.isFinite(durationMs) && durationMs >= 0 ? durationMs : null
 }

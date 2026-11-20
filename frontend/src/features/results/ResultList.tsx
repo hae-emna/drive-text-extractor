@@ -16,7 +16,9 @@ interface ResultListProps {
 
 export function ResultList({ job, onSelectFailed }: ResultListProps) {
   const finished = job.status === 'finished'
-  const failedIds = job.files.filter((r) => r.status === 'failed').map((r) => r.file.id)
+  const failedIds = job.files
+    .filter((result) => result.status === 'failed')
+    .map((result) => result.file.id)
   const pager = usePagination(job.files, PAGE_SIZES)
   const topRef = useRef<HTMLDivElement>(null)
 
